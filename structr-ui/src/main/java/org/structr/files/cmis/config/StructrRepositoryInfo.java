@@ -163,7 +163,7 @@ public class StructrRepositoryInfo extends CMISExtensionsData implements Reposit
 		permissions.add(new StructrPermissionDefinition(Permission.read,          "Read access"));
 		permissions.add(new StructrPermissionDefinition(Permission.write,         "Write access"));
 		permissions.add(new StructrPermissionDefinition(Permission.delete,        "Delete permission"));
-		permissions.add(new StructrPermissionDefinition(Permission.delete,        "Link permission"));
+		permissions.add(new StructrPermissionDefinition(Permission.link,          "Link permission"));
 		permissions.add(new StructrPermissionDefinition(Permission.accessControl, "Access control"));
 
 		return permissions;

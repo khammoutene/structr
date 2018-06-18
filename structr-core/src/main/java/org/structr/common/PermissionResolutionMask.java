@@ -35,7 +35,7 @@ public class PermissionResolutionMask {
 	private final int WRITE                           = 0x00000002;
 	private final int DELETE                          = 0x00000004;
 	private final int ACCESS_CONTROL                  = 0x00000008;
-	private final int LINK                            = 0x00000010;
+	private final int LINK                            = 0x00000016;
 	private int checked                               = 0;	// bitmask, encodes the permissions for which this mask was checked
 	private int value                                 = 0;  // bitmask, encodes the permissions of this mask
 
