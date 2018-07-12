@@ -1024,7 +1024,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 		final Map<String, Object> result = fetchGraphQL("{ Test { test1, test2, test3, test4, test5, test6 { id, type, name }, test7 { id, type } }}");
 		assertMapPathValueIs(result, "Test.0.test1",        "test");
 		assertMapPathValueIs(result, "Test.0.test2",        false);
-		assertMapPathValueIs(result, "Test.0.test3",        42.0);
+		assertMapPathValueIs(result, "Test.0.test3",        42);
 		assertMapPathValueIs(result, "Test.0.test4",        12.34);
 		assertMapPathValueIs(result, "Test.0.test5",        7.465423674522E12);
 		assertMapPathValueIs(result, "Test.0.test6.id",     user.getUuid());
@@ -1192,7 +1192,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.#",           1);
 			assertMapPathValueIs(result, "Project.0.name",      "Test");
 			assertMapPathValueIs(result, "Project.0.tasks.#",   10);
-			assertMapPathValueIs(result, "Project.0.taskCount", 10.0);
+			assertMapPathValueIs(result, "Project.0.taskCount", 10);
 		}
 
 	}
@@ -1278,7 +1278,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			final Map<String, Object> result = fetchGraphQL("{ Project { id, type, name, taskCount, tasks { id, type, name, projectId, status }}}");
 			assertMapPathValueIs(result, "Project.#",                   5);
 			assertMapPathValueIs(result, "Project.0.name",              "project1");
-			assertMapPathValueIs(result, "Project.0.taskCount",         2.0);
+			assertMapPathValueIs(result, "Project.0.taskCount",         2);
 			assertMapPathValueIs(result, "Project.0.tasks.#",           2);
 			assertMapPathValueIs(result, "Project.0.tasks.0.name",      "task0");
 			assertMapPathValueIs(result, "Project.0.tasks.0.status",    "open");
@@ -1288,7 +1288,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.0.tasks.1.projectId", projects.get(0).getUuid());
 
 			assertMapPathValueIs(result, "Project.1.name",              "project2");
-			assertMapPathValueIs(result, "Project.1.taskCount",         2.0);
+			assertMapPathValueIs(result, "Project.1.taskCount",         2);
 			assertMapPathValueIs(result, "Project.1.tasks.#",           2);
 			assertMapPathValueIs(result, "Project.1.tasks.0.name",      "task2");
 			assertMapPathValueIs(result, "Project.1.tasks.0.status",    "cancelled");
@@ -1298,7 +1298,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.1.tasks.1.projectId", projects.get(1).getUuid());
 
 			assertMapPathValueIs(result, "Project.2.name",              "project3");
-			assertMapPathValueIs(result, "Project.2.taskCount",         2.0);
+			assertMapPathValueIs(result, "Project.2.taskCount",         2);
 			assertMapPathValueIs(result, "Project.2.tasks.#",           2);
 			assertMapPathValueIs(result, "Project.2.tasks.0.name",      "task4");
 			assertMapPathValueIs(result, "Project.2.tasks.0.status",    "closed");
@@ -1308,7 +1308,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.2.tasks.1.projectId", projects.get(2).getUuid());
 
 			assertMapPathValueIs(result, "Project.3.name",              "project4");
-			assertMapPathValueIs(result, "Project.3.taskCount",         2.0);
+			assertMapPathValueIs(result, "Project.3.taskCount",         2);
 			assertMapPathValueIs(result, "Project.3.tasks.#",           2);
 			assertMapPathValueIs(result, "Project.3.tasks.0.name",      "task6");
 			assertMapPathValueIs(result, "Project.3.tasks.0.status",    "open");
@@ -1318,7 +1318,7 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.3.tasks.1.projectId", projects.get(3).getUuid());
 
 			assertMapPathValueIs(result, "Project.4.name",              "project5");
-			assertMapPathValueIs(result, "Project.4.taskCount",         2.0);
+			assertMapPathValueIs(result, "Project.4.taskCount",         2);
 			assertMapPathValueIs(result, "Project.4.tasks.#",           2);
 			assertMapPathValueIs(result, "Project.4.tasks.0.name",      "task8");
 			assertMapPathValueIs(result, "Project.4.tasks.0.status",    "cancelled");
@@ -1450,12 +1450,12 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.#",           2);
 			assertMapPathValueIs(result, "Project.0.testBoolean", true);
 			assertMapPathValueIs(result, "Project.0.testDouble",  252.52);
-			assertMapPathValueIs(result, "Project.0.testLong",    234532.0);
-			assertMapPathValueIs(result, "Project.0.testInt",     4563332.0);
+			assertMapPathValueIs(result, "Project.0.testLong",    234532);
+			assertMapPathValueIs(result, "Project.0.testInt",     4563332);
 			assertMapPathValueIs(result, "Project.1.testBoolean", true);
 			assertMapPathValueIs(result, "Project.1.testDouble",  323.22);
-			assertMapPathValueIs(result, "Project.1.testLong",    22.0);
-			assertMapPathValueIs(result, "Project.1.testInt",     452.0);
+			assertMapPathValueIs(result, "Project.1.testLong",    22);
+			assertMapPathValueIs(result, "Project.1.testInt",     452);
 		}
 
 		{
@@ -1463,8 +1463,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.#",           1);
 			assertMapPathValueIs(result, "Project.0.testBoolean", false);
 			assertMapPathValueIs(result, "Project.0.testDouble",  334.32);
-			assertMapPathValueIs(result, "Project.0.testLong",    5.0);
-			assertMapPathValueIs(result, "Project.0.testInt",     235.0);
+			assertMapPathValueIs(result, "Project.0.testLong",    5);
+			assertMapPathValueIs(result, "Project.0.testInt",     235);
 		}
 
 		{
@@ -1472,8 +1472,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.#",           1);
 			assertMapPathValueIs(result, "Project.0.testBoolean", true);
 			assertMapPathValueIs(result, "Project.0.testDouble",  323.22);
-			assertMapPathValueIs(result, "Project.0.testLong",    22.0);
-			assertMapPathValueIs(result, "Project.0.testInt",     452.0);
+			assertMapPathValueIs(result, "Project.0.testLong",    22);
+			assertMapPathValueIs(result, "Project.0.testInt",     452);
 		}
 
 		{
@@ -1481,8 +1481,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.#",           1);
 			assertMapPathValueIs(result, "Project.0.testBoolean", false);
 			assertMapPathValueIs(result, "Project.0.testDouble",  124.52);
-			assertMapPathValueIs(result, "Project.0.testLong",    563.0);
-			assertMapPathValueIs(result, "Project.0.testInt",     2345.0);
+			assertMapPathValueIs(result, "Project.0.testLong",    563);
+			assertMapPathValueIs(result, "Project.0.testInt",     2345);
 		}
 
 	}
@@ -1570,13 +1570,13 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.0.name",                "Project1");
 			assertMapPathValueIs(result, "Project.0.tasks.0.testBoolean", true);
 			assertMapPathValueIs(result, "Project.0.tasks.0.testDouble",  252.52);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    234532.0);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     4563332.0);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    234532);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     4563332);
 			assertMapPathValueIs(result, "Project.1.name",                "Project3");
 			assertMapPathValueIs(result, "Project.1.tasks.0.testBoolean", true);
 			assertMapPathValueIs(result, "Project.1.tasks.0.testDouble",  323.22);
-			assertMapPathValueIs(result, "Project.1.tasks.0.testLong",    22.0);
-			assertMapPathValueIs(result, "Project.1.tasks.0.testInt",     452.0);
+			assertMapPathValueIs(result, "Project.1.tasks.0.testLong",    22);
+			assertMapPathValueIs(result, "Project.1.tasks.0.testInt",     452);
 		}
 
 		{
@@ -1585,8 +1585,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.0.name",                "Project4");
 			assertMapPathValueIs(result, "Project.0.tasks.0.testBoolean", false);
 			assertMapPathValueIs(result, "Project.0.tasks.0.testDouble",  334.32);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    5.0);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     235.0);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    5);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     235);
 		}
 
 		{
@@ -1595,8 +1595,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.0.name",                "Project3");
 			assertMapPathValueIs(result, "Project.0.tasks.0.testBoolean", true);
 			assertMapPathValueIs(result, "Project.0.tasks.0.testDouble",  323.22);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    22.0);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     452.0);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    22);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     452);
 		}
 
 		{
@@ -1605,8 +1605,8 @@ public class GraphQLTest extends StructrGraphQLTest {
 			assertMapPathValueIs(result, "Project.0.name",                "Project2");
 			assertMapPathValueIs(result, "Project.0.tasks.0.testBoolean", false);
 			assertMapPathValueIs(result, "Project.0.tasks.0.testDouble",  124.52);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    563.0);
-			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     2345.0);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testLong",    563);
+			assertMapPathValueIs(result, "Project.0.tasks.0.testInt",     2345);
 		}
 
 	}

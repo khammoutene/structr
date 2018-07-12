@@ -18,6 +18,7 @@
  */
 package org.structr.core.property;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.structr.api.DatabaseService;
 import org.structr.api.graph.Label;
 import org.structr.api.util.Iterables;
+import org.structr.common.AbstractNodePropertyComparator;
 import org.structr.common.AccessControllable;
 import org.structr.common.StructrTest;
 import org.structr.common.error.FrameworkException;
@@ -276,9 +278,9 @@ public class PropertyTest extends StructrTest {
 	@Test
 	public void testOneToManyOnCollectionProperty() throws Exception {
 
-		TestOne testOne                   = null;
-		List<TestSix> testSixs            = null;
-		List<TestSix> testSixs2           = null;
+		TestSix testSix                   = null;
+		List<TestOne> testOnes            = null;
+		List<TestOne> testOnes2           = null;
 		int index                         = 0;
 
 		List<Integer> index1              = new LinkedList();
@@ -286,17 +288,17 @@ public class PropertyTest extends StructrTest {
 
 		try (final Tx tx = app.tx()) {
 
-			testOne        = createTestNode(TestOne.class);
-			testSixs       = createTestNodes(TestSix.class, 20);
+			testSix        = createTestNode(TestSix.class);
+			testOnes       = createTestNodes(TestOne.class, 20);
 
-			for (final TestSix testSix : testSixs) {
+			for (final TestOne testOne : testOnes) {
 				int i = index++;
-				testSix.setProperty(TestSix.index, i);
+				testOne.setProperty(TestSix.index, i);
 				System.out.println(i + " ");
 				index1.add(i);
 			}
 
-			testOne.setProperty(TestOne.manyToManyTestSixs, testSixs);
+			testSix.setProperty(TestSix.oneToManyTestOnes, testOnes);
 
 			tx.success();
 
@@ -304,20 +306,21 @@ public class PropertyTest extends StructrTest {
 
 		try (final Tx tx = app.tx()) {
 
-			testSixs2 = testOne.getProperty(TestOne.manyToManyTestSixs);
+			testOnes2 = testSix.getProperty(TestSix.oneToManyTestOnes);
 
-			for (final TestSix testSix : testSixs2) {
-				int i = testSix.getProperty(TestSix.index);
+			for (final TestOne testOne : testOnes2) {
+				int i = testOne.getProperty(TestSix.index);
 				System.out.println(i + " ");
 				index2.add(i);
 			}
 
+			Collections.sort(index2);
+			
 			assertEquals(index1, index2);
 
 			tx.success();
 
 		}
-
 
 	}
 
