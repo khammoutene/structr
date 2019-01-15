@@ -815,19 +815,19 @@ var _Code = {
 				icon = 'magic';
 				break;
 
-			case "IntegerArray":
-			case "StringArray":
-				icon = 'magic';
-				break;
-
+			case 'Boolean[]':    icon = 'check'; break;
 			case 'Boolean':      icon = 'check'; break;
 			case "Cypher":       icon = 'database'; break;
 			case 'Date':         icon = 'calendar'; break;
+			case "Double[]":     icon = 'superscript'; break;
 			case "Double":       icon = 'superscript'; break;
 			case "Enum":         icon = 'list'; break;
 			case "Function":     icon = 'coffee'; break;
+			case 'Integer[]':    icon = 'calculator'; break;
 			case 'Integer':      icon = 'calculator'; break;
+			case "Long[]":       icon = 'calculator'; break;
 			case "Long":         icon = 'calculator'; break;
+			case 'String[]':     icon = 'pencil-square-o'; break;
 			case 'String':       icon = 'pencil-square-o'; break;
 			default:             icon = 'chain'; break;
 		}
@@ -940,10 +940,13 @@ var _Code = {
 			// global types that are not associated with an actual entity
 			case 'core':
 			case 'html':
-			case 'root':
 			case 'ui':
 			case 'web':
 				_Code.displayContent(identifier.type);
+				break;
+
+			case 'root':
+				_Code.displayRootContent(data);
 				break;
 
 			case 'globals':
@@ -1077,6 +1080,7 @@ var _Code = {
 				}
 
 				_Code.displayCreatePropertyButtonList('#property-actions', propertyData);
+				_Code.displayCreateArrayPropertyButtonList('#array-property-actions', propertyData);
 
 				_Code.displayCreateButton('#view-actions', 'tv', 'new-view', 'Add view', '', { type: 'SchemaView', schemaNode: result.id });
 
@@ -1111,6 +1115,99 @@ var _Code = {
 	displayContent: function(templateName) {
 		Structr.fetchHtmlTemplate('code/' + templateName, { }, function(html) {
 			codeContents.append(html);
+		});
+	},
+	displayRootContent: function(data) {
+
+		Structr.fetchHtmlTemplate('code/root', { }, function(html) {
+
+			codeContents.empty();
+			codeContents.append(html);
+
+			var container = document.getElementById('all-types');
+
+			// Checks if the browser is supported
+			if (!mxClient.isBrowserSupported())
+			{
+				// Displays an error message if the browser is not supported.
+				mxUtils.error('Browser is not supported!', 200, false);
+
+			} else {
+
+				// Creates the graph inside the given container
+				var graph  = new mxGraph(container);
+				var parent = graph.getDefaultParent();
+
+				Command.query('SchemaNode', 10000, 1, 'name', 'asc', { }, function(result) {
+
+					var schemaNodeIndexById    = {};
+					var schemaNodeIndexByClass = {};
+
+					result.forEach(function(type) {
+						if (!type.isBuiltinType) {
+							schemaNodeIndexById[type.id] = type;
+							schemaNodeIndexByClass['org.structr.dynamic.' + type.name] = type.id;
+						}
+					});
+
+					try {
+
+						graph.getModel().beginUpdate();
+
+						Object.keys(schemaNodeIndexById).forEach(function(key) {
+
+							var value       = schemaNodeIndexById[key];
+							value.graphNode = graph.insertVertex(parent, null, value.name, 20, 20, 80, 30);
+						});
+
+						schemaNodeIndexById['0000'] = {
+							graphNode: graph.insertVertex(parent, null, 'AbstractNode', 20, 20, 80, 30)
+						}
+
+						Object.keys(schemaNodeIndexById).forEach(function(key) {
+
+							var value    = schemaNodeIndexById[key];
+							var sourceId = schemaNodeIndexByClass[value.extendsClass];
+							var targetId = value.id;
+
+							if (!sourceId) {
+								sourceId = '0000';
+							}
+
+							if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
+
+								var source = schemaNodeIndexById[sourceId].graphNode;
+								var target = schemaNodeIndexById[targetId].graphNode;
+
+								if (source && target) {
+
+									graph.insertEdge(parent, null, '', source, target);
+
+								} else {
+
+									console.log('source or target not found for ' + key);
+								}
+
+							} else {
+
+								console.log('source or target not found for ' + key);
+							}
+						});
+
+					} finally {
+
+						// Updates the display
+						graph.getModel().endUpdate();
+					}
+
+					var layout = new mxHierarchicalLayout(graph);
+					layout.rootx = 100;
+					layout.rooty = 100;
+					layout.execute(graph.getDefaultParent());
+
+				}, true);
+
+			}
 		});
 	},
 	displayCustomTypesContent: function(data) {
@@ -1168,9 +1265,9 @@ var _Code = {
 			codeContents.append(html);
 			var callback = function() { _Code.displayPropertiesContent(selection); };
 			var data     = { type: 'SchemaProperty', schemaNode: selection.id };
-			var id       = '#property-actions';
 
 			_Code.displayCreatePropertyButtonList('#property-actions', data, callback);
+			_Code.displayCreateArrayPropertyButtonList('#array-property-actions', data, callback);
 
 			// list of existing properties
 			Command.query('SchemaProperty', 10000, 1, 'name', 'asc', { schemaNode: selection.id }, function(result) {
@@ -1186,15 +1283,25 @@ var _Code = {
 	displayCreatePropertyButtonList: function(id, data) {
 
 		// create buttons
-		_Code.displayCreatePropertyButton(id, 'String',   data);
-		_Code.displayCreatePropertyButton(id, 'Boolean',  data);
-		_Code.displayCreatePropertyButton(id, 'Integer',  data);
-		_Code.displayCreatePropertyButton(id, 'Long',     data);
-		_Code.displayCreatePropertyButton(id, 'Double',   data);
-		_Code.displayCreatePropertyButton(id, 'Enum',     data);
-		_Code.displayCreatePropertyButton(id, 'Date',     data);
-		_Code.displayCreatePropertyButton(id, 'Function', data);
-		_Code.displayCreatePropertyButton(id, 'Cypher',   data);
+		_Code.displayCreatePropertyButton(id, 'String',        data);
+		_Code.displayCreatePropertyButton(id, 'Boolean',       data);
+		_Code.displayCreatePropertyButton(id, 'Integer',       data);
+		_Code.displayCreatePropertyButton(id, 'Long',          data);
+		_Code.displayCreatePropertyButton(id, 'Double',        data);
+		_Code.displayCreatePropertyButton(id, 'Enum',          data);
+		_Code.displayCreatePropertyButton(id, 'Date',          data);
+		_Code.displayCreatePropertyButton(id, 'Function',      data);
+		_Code.displayCreatePropertyButton(id, 'Cypher',        data);
+
+	},
+	displayCreateArrayPropertyButtonList: function(id, data) {
+
+		// create buttons
+		_Code.displayCreatePropertyButton(id, 'StringArray',   data);
+		_Code.displayCreatePropertyButton(id, 'BooleanArray',  data);
+		_Code.displayCreatePropertyButton(id, 'IntegerArray',  data);
+		_Code.displayCreatePropertyButton(id, 'LongArray',     data);
+		_Code.displayCreatePropertyButton(id, 'DoubleArray',   data);
 
 	},
 	displayViewsContent: function(selection, updateLocationStack) {
@@ -1663,12 +1770,18 @@ var _Code = {
 		});
 	},
 	displayCreatePropertyButton: function(targetId, type, nodeData) {
-		var data = Object.assign({}, nodeData);
+		var data     = Object.assign({}, nodeData);
+		var typeName = type;
+
 		data['propertyType'] = type;
 		if (type === 'Enum') {
 			data.format = 'value1, value2, value3';
 		}
-		_Code.displayCreateButton(targetId, _Code.getIconForPropertyType(type), type.toLowerCase(), 'Add ' + type + ' property', '', data);
+
+		if (typeName.indexOf('Array') > 0) {
+			typeName = typeName.replace("Array", "[]");
+		}
+		_Code.displayCreateButton(targetId, _Code.getIconForPropertyType(typeName), type.toLowerCase(), 'Add ' + typeName + ' property', '', data);
 	},
 	displayCreateMethodButton: function(targetId, type, data, presetValue) {
 		_Code.displayCreateButton(targetId, _Code.getIconForNodeType(data), type.toLowerCase(), 'Add ' + type + ' method', presetValue, data);
