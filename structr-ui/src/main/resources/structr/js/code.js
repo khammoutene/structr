@@ -39,6 +39,7 @@ var _Code = {
 	searchThreshold: 3,
 	searchTextLength: 0,
 	lastClickedPath: '',
+	layouter: null,
 	init: function() {
 
 		_Logger.log(_LogType.CODE, '_Code.init');
@@ -137,7 +138,7 @@ var _Code = {
 			$.jstree.defaults.dnd.inside_pos        = 'last';
 			$.jstree.defaults.dnd.large_drop_target = true;
 
-			codeTree.on('select_node.jstree', _Code.handleTreeClick);
+			codeTree.on('activate_node.jstree', _Code.handleTreeClick);
 			codeTree.on('refresh.jstree', _Code.activateLastClicked);
 
 			_Code.loadFavorites(function() {
@@ -931,9 +932,6 @@ var _Code = {
 	},
 	handleSelection: function(data) {
 
-		// clear page
-		_Code.clearMainArea();
-
 		var identifier = _Code.splitIdentifier(data.id);
 		switch (identifier.type) {
 
@@ -946,7 +944,7 @@ var _Code = {
 				break;
 
 			case 'root':
-				_Code.displayRootContent(data);
+				_Code.displayRootContent();
 				break;
 
 			case 'globals':
@@ -1060,6 +1058,11 @@ var _Code = {
 
 		var identifier = _Code.splitIdentifier(data.id);
 
+		if (_Code.layouter) {
+			_Code.layouter.focus(identifier.id);
+			return;
+		}
+
 		Command.get(identifier.id, null, function(result) {
 
 			_Code.updateRecentlyUsed(result, data.updateLocationStack);
@@ -1117,7 +1120,7 @@ var _Code = {
 			codeContents.append(html);
 		});
 	},
-	displayRootContent: function(data) {
+	displayRootContent: function() {
 
 		Structr.fetchHtmlTemplate('code/root', { }, function(html) {
 
@@ -1125,89 +1128,123 @@ var _Code = {
 			codeContents.append(html);
 
 			var container = document.getElementById('all-types');
+			var layouter  = new VISLayouter(container);
 
-			// Checks if the browser is supported
-			if (!mxClient.isBrowserSupported())
-			{
-				// Displays an error message if the browser is not supported.
-				mxUtils.error('Browser is not supported!', 200, false);
+			Command.query('SchemaNode', 10000, 1, 'name', 'asc', { }, function(result) {
 
-			} else {
+				var schemaNodeIndexById    = {};
+				var schemaNodeIndexByClass = {};
 
-				// Creates the graph inside the given container
-				var graph  = new mxGraph(container);
-				var parent = graph.getDefaultParent();
+				result.forEach(function(type) {
+					if (!type.isBuiltinType) {
+						schemaNodeIndexById[type.id] = type;
+						schemaNodeIndexByClass['org.structr.dynamic.' + type.name] = type.id;
+					}
+				});
 
-				Command.query('SchemaNode', 10000, 1, 'name', 'asc', { }, function(result) {
+				try {
+					layouter.begin();
 
-					var schemaNodeIndexById    = {};
-					var schemaNodeIndexByClass = {};
+					Object.keys(schemaNodeIndexById).forEach(function(key) {
 
-					result.forEach(function(type) {
-						if (!type.isBuiltinType) {
-							schemaNodeIndexById[type.id] = type;
-							schemaNodeIndexByClass['org.structr.dynamic.' + type.name] = type.id;
+						var value       = schemaNodeIndexById[key];
+						value.graphNode = layouter.addNode(value.id, '<b>' + value.name + '</b>');
+					});
+
+/*
+					schemaNodeIndexById['0000'] = {
+						graphNode: layouter.addNode('0000', 'AbstractNode')
+					}
+					*/
+
+					Object.keys(schemaNodeIndexById).forEach(function(key) {
+
+						var value = schemaNodeIndexById[key];
+						if (value && value.relatedTo) {
+
+							value.relatedTo.forEach(function(r) {
+								
+								var sourceId = r.sourceId;
+								var targetId = r.targetId;
+
+								if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
+
+									var source = schemaNodeIndexById[sourceId].graphNode;
+									var target = schemaNodeIndexById[targetId].graphNode;
+
+									if (source && target) {
+
+										layouter.addEdge(r.id, r.relationshipType, source, target, true);
+									}
+								}
+								
+							});
 						}
 					});
 
-					try {
+					Object.keys(schemaNodeIndexById).forEach(function(key) {
 
-						graph.getModel().beginUpdate();
+						var value    = schemaNodeIndexById[key];
+						var sourceId = value.id;
+						var targetId = schemaNodeIndexByClass[value.extendsClass];
 
-						Object.keys(schemaNodeIndexById).forEach(function(key) {
-
-							var value       = schemaNodeIndexById[key];
-							value.graphNode = graph.insertVertex(parent, null, value.name, 20, 20, 80, 30);
-						});
-
-						schemaNodeIndexById['0000'] = {
-							graphNode: graph.insertVertex(parent, null, 'AbstractNode', 20, 20, 80, 30)
+						if (!targetId) {
+							targetId = '0000';
 						}
 
-						Object.keys(schemaNodeIndexById).forEach(function(key) {
+						if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
 
-							var value    = schemaNodeIndexById[key];
-							var sourceId = schemaNodeIndexByClass[value.extendsClass];
-							var targetId = value.id;
+							var source = schemaNodeIndexById[sourceId].graphNode;
+							var target = schemaNodeIndexById[targetId].graphNode;
 
-							if (!sourceId) {
-								sourceId = '0000';
+							if (source && target) {
+								layouter.addEdge(sourceId + targetId, '', source, target, false);
 							}
+						}
+					});
 
-							if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
+				} finally {
 
-								var source = schemaNodeIndexById[sourceId].graphNode;
-								var target = schemaNodeIndexById[targetId].graphNode;
+					layouter.end();
+				}
 
-								if (source && target) {
+				layouter.layout();
 
-									graph.insertEdge(parent, null, '', source, target);
+				codeContext.empty();
+				codeContext.append('<div><input type="checkbox" id="hierarchy-checkbox" checked /><label>Display hierarchy</label></div>');
+				codeContext.append('<div><label>Distance</label><input style="margin:0; width: 225px;" type="range" id="gravity-slider" value="20" /></div>');
+				codeContext.append('<div><label>Roundness</label><input style="margin:0; width: 225px;" type="range" id="roundness-slider" value="90" /></div>');
 
-								} else {
+				$('#roundness-slider').on('input', function() {
+					var value = $(this).val() / 100;
+					layouter.update('roundness', value);
+				});
 
-									console.log('source or target not found for ' + key);
-								}
+				$('#gravity-slider').on('input', function() {
+					var value = ($(this).val() + 10);
+					layouter.update('gravity', value);
+				});
 
-							} else {
+				$('#hierarchy-checkbox').on('click', function() {
+					var value = $(this).prop(':checked');
+					_Code.displayRootContent(!value, value);
 
-								console.log('source or target not found for ' + key);
-							}
+				});
+
+				layouter.on('click', function(data) {
+
+					if (data.nodes.length === 1) {
+
+						Command.get(data.nodes[0], null, function(result) {
+							_Code.findAndOpenNode(_Code.getPathForEntity(result), false, false);
 						});
-
-					} finally {
-
-						// Updates the display
-						graph.getModel().endUpdate();
+						layouter.test();
 					}
+				});
 
-					var layout = new mxHierarchicalLayout(graph);
-					layout.rootx = 100;
-					layout.rooty = 100;
-					layout.execute(graph.getDefaultParent());
+				_Code.layouter = layouter;
 
-				}, true);
-
-			}
+			}, true);
 		});
 	},
 	displayCustomTypesContent: function(data) {
@@ -1861,11 +1898,11 @@ var _Code = {
 			$('#recently-used-' + id).remove();
 		});
 	},
-	findAndOpenNode: function(path, updateLocationStack) {
+	findAndOpenNode: function(path, updateLocationStack, selectNode) {
 		var tree = $('#code-tree').jstree(true);
-		_Code.findAndOpenNodeRecursive(tree, path, 0, undefined, updateLocationStack);
+		_Code.findAndOpenNodeRecursive(tree, path, 0, undefined, updateLocationStack, selectNode);
 	},
-	findAndOpenNodeRecursive: function(tree, path, depth, node, updateLocationStack) {
+	findAndOpenNodeRecursive: function(tree, path, depth, node, updateLocationStack, selectNode) {
 		var parts = path.split('/');
 		if (path.length === 0) { return; }
 		if (parts.length < 1) {	return; }
@@ -1886,23 +1923,22 @@ var _Code = {
 
 			// node found, activate
 			if (tree.get_selected().indexOf(searchId) === -1) {
-				tree.activate_node(searchId, { updateLocationStack: updateLocationStack });
-			}
-
-			// also scroll into view if node is in tree
-			var domNode = document.getElementById( tree.get_parent(tree.get_parent(searchId)) );
-			if (domNode) {
-
-				var rect = domNode.getBoundingClientRect();
-				if (rect.bottom > window.innerHeight) {
-
-					domNode.scrollIntoView(false);
+				
+				if (selectNode) {
+					tree.activate_node(searchId, { updateLocationStack: updateLocationStack });
+				} else {
+					tree.close_all(tree.get_parent(searchId));
+					tree.deselect_all(true);
+					tree.open_node(searchId);
+					tree.select_node(searchId);
 				}
 
-				if (rect.top < 0) {
+				// also scroll into view if node is in tree
+				var domNode = document.getElementById(searchId);
+				if (domNode) {
+					
 					domNode.scrollIntoView();
 				}
-
 			}
 
 		} else {
