@@ -891,12 +891,12 @@ var Command = {
 	 * The server will create a new node with the given properties contained
 	 * in the 'nodeData' hash and broadcast a CREATE notification.
 	 */
-	create: function(nodeData, callback) {
+	create: function(nodeData, callback, dontSetDefaultName) {
 		var obj = {
 			command: 'CREATE',
 			data: nodeData
 		};
-		if (!obj.data.name) {
+		if (!obj.data.name && !dontSetDefaultName) {
 			obj.data.name = 'New ' + obj.data.type + ' ' + Math.floor(Math.random() * (999999 - 1));
 		}
 		if (obj.data.isContent && !obj.data.content) {

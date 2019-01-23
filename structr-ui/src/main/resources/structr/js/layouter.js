@@ -17,72 +17,14 @@
  * along with Structr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class Layouter {
+class VISLayouter {
 
 	constructor(container) {
-
-		if (new .target === Layouter) {
-			throw new TypeError("Cannot construct Layouter instances directly, please use one of the subclasses.");
-		}
 
 		this.container = container;
-	}
-
-	/**
-	 * Notify layouter that nodes and edges will be added.
-	 * @returns {undefined}
-	 */
-	begin() {
-	}
-
-	/**
-	 * Adds a node with the given name.
-	 * 
-	 * @param {string} id
-	 * @param {string} name
-	 * 
-	 * @returns the newly created node object
-	 */
-	addNode(id, name) {
-	}
-
-	/**
-	 * Adds an edge with the given name between source and target.
-	 * 
-	 * @param {string} id
-	 * @param {string} name
-	 * @param {Node} source
-	 * @param {Node} target
-	 * 
-	 * @returns the newly created edge object
-	 */
-	addEdge(id, name, source, target) {
-	}
-
-	/**
-	 * Notify layouter that nodes and edges have been added.
-	 * @returns {undefined}
-	 */
-	end() {
-	}
-
-	layout() {
-	}
-
-	update(key, value) {
-	}
-}
-;
-
-class VISLayouter extends Layouter {
-
-	constructor(container) {
-
-		super(container);
-
 		this.data = {
-			nodes: [],
-			edges: []
+			nodes: new vis.DataSet(),
+			edges: new vis.DataSet()
 		};
 		this.cache = {};
 		this.options = {
@@ -134,7 +76,11 @@ class VISLayouter extends Layouter {
 				smooth: {
 					type: 'discrete',
 					roundness: 0.9
-				}
+				},
+				color: {
+					color: '#81ce25',
+					opacity: 1.0
+				},
 			},
 			interaction: {
 				dragNodes: false,
@@ -169,17 +115,49 @@ class VISLayouter extends Layouter {
 			},
 			manipulation: {
 				enabled: false,
-				addEdge: function (data, callback) {
-					console.log('add edge', data);
+				addEdge: (data, callback) => {
+					this.handleAddEdge(data, callback);
+				},
+				editNode: (data, callback) => {
+					callback(data);
+				},
+				initiallyActive: false,
+				controlNodeStyle: {
+					// all node options are valid.
+					shape: 'dot',
+					size: 2,
+					color: {
+						background: '#ff0000',
+						border: '#3c3c3c',
+						highlight: {
+							background: '#07f968',
+							border: '#3c3c3c'
+						}
+					},
+					borderWidth: 2,
+					borderWidthSelected: 2
 				}
+
 			}
 		}
 	}
 
-	begin() {
+	init() {
+
+		this.network = new vis.Network(this.container, this.data, this.options);
+		$(document).on('keydown', (event) => {
+			if (event.key === 'Shift') {
+				this.enableEditMode();
+			}
+		});
+		$(document).on('keyup', (event) => {
+			if (event.key === 'Shift') {
+				this.disableEditMode();
+			}
+		});
 	}
 
-	addNode(id, name) {
+	addNode(id, name, position) {
 
 		var node = {
 			id: id,
@@ -190,7 +168,12 @@ class VISLayouter extends Layouter {
 			}
 		};
 
-		this.data.nodes.push(node);
+		if (position) {
+			node.x = position.x;
+			node.y = position.y;
+		}
+
+		this.data.nodes.add(node);
 		return id;
 	}
 
@@ -216,34 +199,8 @@ class VISLayouter extends Layouter {
 			dashes: !active
 		};
 
-		this.data.edges.push(edge);
+		this.data.edges.add(edge);
 		return id;
-	}
-
-	end() {
-		this.network = new vis.Network(this.container, this.data, this.options);
-		$(document).on('keydown', (event) => {
-			if (event.key === 'Shift') {
-				this.network.addEdgeMode();
-				this.network.setOptions({
-					interaction: {
-						hover: true
-					}
-				});
-				this.network.stopSimulation();
-			}
-		});
-		$(document).on('keyup', (event) => {
-			if (event.key === 'Shift') {
-				this.network.disableEditMode();
-				this.network.setOptions({
-					interaction: {
-						hover: false
-					}
-				});
-				this.network.stopSimulation();
-			}
-		});
 	}
 
 	layout() {
@@ -297,8 +254,135 @@ class VISLayouter extends Layouter {
 		});
 	}
 
-	test() {
+	enableEdgeCreationMode() {
 		this.network.addEdgeMode();
 		this.network.disableEditMode();
+	}
+
+	enableEditMode() {
+
+		this.network.addEdgeMode();
+		this.network.setOptions({
+			interaction: {
+				hover: true
+			}
+		});
+		this.network.stopSimulation();
+		$(this.container).css('cursor', 'copy');
+		this.network.on('click', (e) => this.handleAddNode(e));
+	}
+
+	handleAddNode(e) {
+
+		$(this.container).css('cursor', 'wait');
+
+		Command.create({
+			type: 'SchemaNode',
+			name: 'Unnamed'
+		}, (result) => {
+			if (result) {
+				this.addNode(result.id, '<b>' + result.name + '</b>', e.pointer.canvas);
+				this.addEdge(result.id + '0000', '', result.id, '0000', false);
+			}
+			$(this.container).css('cursor', 'default');
+		});
+	}
+
+	handleAddEdge(data, callback) {
+
+		$(this.container).css('cursor', 'wait');
+
+		Command.create({
+			type: 'SchemaRelationshipNode',
+			relationshipType: 'UNKNOWN',
+			sourceNode: data.from,
+			targetNode: data.to,
+			name: null
+		}, (result) => {
+			if (result) {
+				this.addEdge(result.id, 'UNKNOWN', data.from, data.to, true);
+			}
+			$(this.container).css('cursor', 'default');
+		}, true);
+	}
+
+	disableEditMode() {
+
+		this.network.disableEditMode();
+		this.network.setOptions({
+			interaction: {
+				hover: false
+			}
+		});
+		this.network.stopSimulation();
+
+		var c = $(this.container);
+		if (c.css('cursor') !== 'wait') {
+
+			c.css('cursor', 'default');
+		}
+
+		this.network.off('click');
+	}
+
+	getNodes() {
+		return this.data.nodes;
+	}
+
+	getEdges() {
+		return this.data.edges;
+	}
+
+	disableInteraction() {
+
+		this.network.setOptions({
+
+			interaction: {
+
+				dragNodes: false,
+				dragView: false,
+				hideEdgesOnDrag: false,
+				hideNodesOnDrag: false,
+				hover: false,
+				hoverConnectedEdges: false,
+				keyboard: {
+					enabled: false,
+					speed: {x: 10, y: 10, zoom: 0.02},
+					bindToWindow: false
+				},
+				multiselect: false,
+				navigationButtons: false,
+				selectable: false,
+				selectConnectedEdges: false,
+				zoomView: false
+			}
+		});
+	}
+
+	enableInteraction() {
+
+		this.network.setOptions({
+
+			interaction: {
+				dragNodes: false,
+				dragView: true,
+				hideEdgesOnDrag: false,
+				hideNodesOnDrag: false,
+				hover: false,
+				hoverConnectedEdges: true,
+				keyboard: {
+					enabled: false,
+					speed: {x: 10, y: 10, zoom: 0.02},
+					bindToWindow: true
+				},
+				multiselect: true,
+				navigationButtons: false,
+				selectable: true,
+				selectConnectedEdges: true,
+				tooltipDelay: 300,
+				zoomView: true
+
+			}
+		});
 	}
 }

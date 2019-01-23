@@ -3352,7 +3352,7 @@ td#cascading-options, td#propagation-options {
 }
 
 .tree-main {
-	display: table-row;  
+	display: table-row;
 }
 
 .tree-main b.name_, .tree-main input.new-name {
@@ -3574,7 +3574,8 @@ input.tree-search-input:focus {
 	width: 24px;
 }
 
-#code-contents h2 {
+#code-contents h2,
+#code-context h2 {
 	margin: 0 0 12px 0;
 	border-bottom: 1px solid #ccc;
 }
@@ -3681,6 +3682,10 @@ button.create-form-button.accept {
 
 #code-contents input[type="text"] {
 	width: 100%;
+}
+
+#code-context input[type="text"] {
+	width: 230px;
 }
 
 #folder-contents .tile {

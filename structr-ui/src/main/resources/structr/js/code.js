@@ -228,6 +228,9 @@ var _Code = {
 	},
 	refreshTree: function() {
 		_TreeHelper.refreshTree(codeTree);
+		if (_Code.layouter !== null) {
+			_Code.layouter.on('click', _Code.handleGraphClick);
+		}
 	},
 	treeInitFunction: function(obj, callback) {
 
@@ -1142,72 +1145,63 @@ var _Code = {
 					}
 				});
 
-				try {
-					layouter.begin();
+				Object.keys(schemaNodeIndexById).forEach(function(key) {
 
-					Object.keys(schemaNodeIndexById).forEach(function(key) {
+					var value       = schemaNodeIndexById[key];
+					value.graphNode = layouter.addNode(value.id, '<b>' + value.name + '</b>');
+				});
 
-						var value       = schemaNodeIndexById[key];
-						value.graphNode = layouter.addNode(value.id, '<b>' + value.name + '</b>');
-					});
-
-/*
-					schemaNodeIndexById['0000'] = {
-						graphNode: layouter.addNode('0000', 'AbstractNode')
-					}
-					*/
-
-					Object.keys(schemaNodeIndexById).forEach(function(key) {
-
-						var value = schemaNodeIndexById[key];
-						if (value && value.relatedTo) {
-
-							value.relatedTo.forEach(function(r) {
-								
-								var sourceId = r.sourceId;
-								var targetId = r.targetId;
-
-								if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
-
-									var source = schemaNodeIndexById[sourceId].graphNode;
-									var target = schemaNodeIndexById[targetId].graphNode;
-
-									if (source && target) {
-
-										layouter.addEdge(r.id, r.relationshipType, source, target, true);
-									}
-								}
-								
-							});
-						}
-					});
-
-					Object.keys(schemaNodeIndexById).forEach(function(key) {
-
-						var value    = schemaNodeIndexById[key];
-						var sourceId = value.id;
-						var targetId = schemaNodeIndexByClass[value.extendsClass];
-
-						if (!targetId) {
-							targetId = '0000';
-						}
-
-						if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
-
-							var source = schemaNodeIndexById[sourceId].graphNode;
-							var target = schemaNodeIndexById[targetId].graphNode;
-
-							if (source && target) {
-								layouter.addEdge(sourceId + targetId, '', source, target, false);
-							}
-						}
-					});
-
-				} finally {
-
-					layouter.end();
+				schemaNodeIndexById['0000'] = {
+					graphNode: layouter.addNode('0000', 'AbstractNode')
 				}
 
+				Object.keys(schemaNodeIndexById).forEach(function(key) {
+
+					var value = schemaNodeIndexById[key];
+					if (value && value.relatedTo) {
+
+						value.relatedTo.forEach(function(r) {
+
+							var sourceId = r.sourceId;
+							var targetId = r.targetId;
+
+							if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
+
+								var source = schemaNodeIndexById[sourceId].graphNode;
+								var target = schemaNodeIndexById[targetId].graphNode;
+
+								if (source && target) {
+
+									layouter.addEdge(r.id, r.relationshipType, source, target, true);
+								}
+							}
+
+						});
+					}
+				});
+
+				Object.keys(schemaNodeIndexById).forEach(function(key) {
+
+					var value    = schemaNodeIndexById[key];
+					var sourceId = value.id;
+					var targetId = schemaNodeIndexByClass[value.extendsClass];
+
+					if (!targetId) {
+						targetId = '0000';
+					}
+
+					if (schemaNodeIndexById[sourceId] && schemaNodeIndexById[targetId]) {
+
+						var source = schemaNodeIndexById[sourceId].graphNode;
+						var target = schemaNodeIndexById[targetId].graphNode;
+
+						if (source && target) {
+							layouter.addEdge(sourceId + targetId, '', source, target, false);
+						}
+					}
+				});
+
+				layouter.init();
 				layouter.layout();
 
 				codeContext.empty();
@@ -1231,21 +1225,51 @@ var _Code = {
 
 				});
 
-				layouter.on('click', function(data) {
+				layouter.on('click', _Code.handleGraphClick);
 
-					if (data.nodes.length === 1) {
-
-						Command.get(data.nodes[0], null, function(result) {
-							_Code.findAndOpenNode(_Code.getPathForEntity(result), false, false);
-						});
-						layouter.test();
-					}
-				});
+				layouter.getNodes().on('add',    _Code.refreshTree);
+				layouter.getNodes().on('remove', _Code.refreshTree);
 
 				_Code.layouter = layouter;
 
 			}, true);
 		});
+	},
+	handleGraphClick: function(data) {
+
+		console.log(data);
+
+		if (data.nodes.length === 1) {
+
+			Command.get(data.nodes[0], null, function(result) {
+				_Code.findAndOpenNode(_Code.getPathForEntity(result), false, false);
+				_Code.displaySchemaNodeContext(result);
+			});
+		}
+
+	},
+	displaySchemaNodeContext:function(entity) {
+
+		Structr.fetchHtmlTemplate('code/type-context', { entity: entity }, function(html) {
+
+			codeContext.empty();
+			codeContext.append(html);
+
+			$('#schema-node-name').off('blur').on('blur', function() {
+
+				var name = $(this).val();
+
+				_Code.showSchemaRecompileMessage();
+
+				Command.setProperty(entity.id, 'name', name, false, function() {
+
+					_Code.layouter.getNodes().update({ id: entity.id, label: '<b>' + name + '</b>' });
+					_Code.hideSchemaRecompileMessage();
+					_Code.refreshTree();
+				});
+			});
+		});
+
 	},
 	displayCustomTypesContent: function(data) {
 		Structr.fetchHtmlTemplate('code/custom', { }, function(html) {
@@ -1923,7 +1947,7 @@ var _Code = {
 
 			// node found, activate
 			if (tree.get_selected().indexOf(searchId) === -1) {
-				
+
 				if (selectNode) {
 					tree.activate_node(searchId, { updateLocationStack: updateLocationStack });
 				} else {
@@ -1936,7 +1960,7 @@ var _Code = {
 				// also scroll into view if node is in tree
 				var domNode = document.getElementById(searchId);
 				if (domNode) {
-					
+
 					domNode.scrollIntoView();
 				}
 			}
