@@ -131,7 +131,7 @@ var _Pages = {
 				'<div id="pages" class="slideOut slideOutLeft"><div class="compTab" id="pagesTab">Pages Tree View</div></div>'
 				+ '<div id="activeElements" class="slideOut slideOutLeft"><div class="compTab" id="activeElementsTab">Active Elements</div><div class="page inner"></div></div>'
 				+ '<div id="dataBinding" class="slideOut slideOutLeft"><div class="compTab" id="dataBindingTab">Data Binding</div></div>'
-				+ '<div id="localizations" class="slideOut slideOutLeft"><div class="compTab" id="localizationsTab">Localizations</div><div class="page inner"><input class="locale" placeholder="Locale"><button class="refresh action button">' + _Icons.getHtmlForIcon(_Icons.refresh_icon) + ' Refresh</button><div class="results"></div></div></div>'
+				+ '<div id="localizations" class="slideOut slideOutLeft"><div class="compTab" id="localizationsTab">Localizations</div><div class="page inner"><input class="locale" placeholder="Locale"><button class="refresh action button">' + _Icons.getHtmlForIcon(_Icons.refresh_icon) + ' Refresh</button><div class="results ver-scrollable"></div></div></div>'
 				+ '<div id="previews"></div>'
 				+ '<div id="widgetsSlideout" class="slideOut slideOutRight"><div class="compTab" id="widgetsTab">Widgets</div></div>'
 				+ '<div id="palette" class="slideOut slideOutRight"><div class="compTab" id="paletteTab">HTML Palette</div></div>'
@@ -188,13 +188,16 @@ var _Pages = {
 
 		Structr.appendInfoTextToElement({
 			element: $('#localizations button.refresh'),
-			text: "On this tab you can load the localizations requested for the given locale on the currently previewed page.<br><br>The retrieval process works just as rendering the page. If you request the locale \"en_US\" you might get Localizations for \"en\" as a fallback if no exact match is found.<br><br>If no Localization could be found, an empty input field is rendered where you can quickly create the missing Localization.",
+			text: "On this tab you can load the localizations requested for the given locale on the currently previewed page (including the UUID of the details object which is also used for the preview).<br><br>The retrieval process works just as rendering the page. If you request the locale \"en_US\" you might get Localizations for \"en\" as a fallback if no exact match is found.<br><br>If no Localization could be found, an empty input field is rendered where you can quickly create the missing Localization.",
 			insertAfter: true,
 			css: {
 				right: "2px",
-				top: "2px",
-				position: "absolute"
-			}
+				top: "2px"
+			},
+			helpElementCss: {
+				width: "200px"
+			},
+			offsetX: -50
 		});
 
 		$('#widgetsTab').on('click', function() {
@@ -374,7 +377,7 @@ var _Pages = {
 			e.stopPropagation();
 			var self = $(this);
 			var link = $.trim(self.parent().children('b.name_').attr('title'));
-			var url = (entity.site && entity.site.hostname ? '//' + entity.site.hostname + (entity.site.port ? ':' + entity.site.port : '') + '/' : viewRootUrl) + link + (LSWrapper.getItem(detailsObjectId + entity.id) ? '/' + LSWrapper.getItem(detailsObjectId + entity.id) : '');
+			var url = (entity.site && entity.site.hostname ? '//' + entity.site.hostname + (entity.site.port ? ':' + entity.site.port : '') + '/' : viewRootUrl) + link + (LSWrapper.getItem(detailsObjectIdKey + entity.id) ? '/' + LSWrapper.getItem(detailsObjectIdKey + entity.id) : '');
 			window.open(url);
 		});
 
@@ -395,7 +398,7 @@ var _Pages = {
 			dialog.append('<p>With these settings you can influence the behaviour of the page previews only. They are not persisted on the Page object but only stored in the UI settings.</p>');
 
 			dialog.append('<table class="props">'
-					+ '<tr><td><label for="details-object-id">UUID of details object to append to preview URL</label></td><td><input id="_details-object-id" name="details-object-id" size="30" value="' + (LSWrapper.getItem(detailsObjectId + entity.id) ?  LSWrapper.getItem(detailsObjectId + entity.id) : '') + '"> <i id="clear-details-object-id" class="' + _Icons.getFullSpriteClass(_Icons.grey_cross_icon) + '" /></td></tr>'
+					+ '<tr><td><label for="details-object-id">UUID of details object to append to preview URL</label></td><td><input id="_details-object-id" name="details-object-id" size="30" value="' + (LSWrapper.getItem(detailsObjectIdKey + entity.id) ?  LSWrapper.getItem(detailsObjectIdKey + entity.id) : '') + '"> <i id="clear-details-object-id" class="' + _Icons.getFullSpriteClass(_Icons.grey_cross_icon) + '" /></td></tr>'
 					+ '<tr><td><label for="auto-refresh">Automatic refresh</label></td><td><input title="Auto-refresh page on changes" alt="Auto-refresh page on changes" class="auto-refresh" type="checkbox"' + (LSWrapper.getItem(autoRefreshDisabledKey + entity.id) ? '' : ' checked="checked"') + '></td></tr>'
 					+ '<tr><td><label for="page-category">Category</label></td><td><input name="page-category" id="_page-category" type="text" value="' + (entity.category || '') + '"> <i id="clear-page-category" class="' + _Icons.getFullSpriteClass(_Icons.grey_cross_icon) + '" /></td></tr>'
 					+ '</table>');
@@ -408,20 +411,20 @@ var _Pages = {
 
 			$('#clear-details-object-id').on('click', function() {
 				detailsObjectIdInput.val('');
-				var oldVal = LSWrapper.getItem(detailsObjectId + entity.id) || null;
+				var oldVal = LSWrapper.getItem(detailsObjectIdKey + entity.id) || null;
 				if (oldVal) {
 					blinkGreen(detailsObjectIdInput);
-					LSWrapper.removeItem(detailsObjectId + entity.id);
+					LSWrapper.removeItem(detailsObjectIdKey + entity.id);
 					detailsObjectIdInput.focus();
 				}
 			});
 
 			detailsObjectIdInput.on('blur', function() {
 				var inp = $(this);
-				var oldVal = LSWrapper.getItem(detailsObjectId + entity.id) || null;
+				var oldVal = LSWrapper.getItem(detailsObjectIdKey + entity.id) || null;
 				var newVal = inp.val() || null;
 				if (newVal !== oldVal) {
-					LSWrapper.setItem(detailsObjectId + entity.id, newVal);
+					LSWrapper.setItem(detailsObjectIdKey + entity.id, newVal);
 					blinkGreen(detailsObjectIdInput);
 				}
 			});
@@ -567,7 +570,7 @@ var _Pages = {
 						_Entities.handleActiveElement(activeElement);
 					});
 				} else {
-					activeElementsContainer.append("<br><center>Page does not contain any active elements.</center>");
+					activeElementsContainer.append('<br><center>Page does not contain any active elements.</center>');
 				}
 			});
 
@@ -584,8 +587,8 @@ var _Pages = {
 		}
 		_Pages.unloadIframes();
 		var iframe = $('#preview_' + id);
-		Command.get(id, "id,name", function(obj) {
-			var url = viewRootUrl + obj.name + (LSWrapper.getItem(detailsObjectId + id) ? '/' + LSWrapper.getItem(detailsObjectId + id) : '') + '?edit=2';
+		Command.get(id, 'id,name', function(obj) {
+			var url = viewRootUrl + obj.name + (LSWrapper.getItem(detailsObjectIdKey + id) ? '/' + LSWrapper.getItem(detailsObjectIdKey + id) : '') + '?edit=2';
 			iframe.prop('src', url);
 			_Logger.log(_LogType.PAGES, 'iframe', id, 'activated');
 			_Pages.hideAllPreviews();
@@ -1064,7 +1067,11 @@ var _Pages = {
 				return;
 			}
 
-			Command.listLocalizations(id, locale, function(result) {
+			var detailObjectId = LSWrapper.getItem(detailsObjectIdKey + id);
+
+			Command.listLocalizations(id, locale, detailObjectId, function(result) {
+
+				$('#localizations .page').prop('id', 'id_' + id);
 
 				var localizationsContainer = $('#localizations div.inner div.results');
 				localizationsContainer.empty().attr('id', 'id_' + id);
@@ -1101,7 +1108,7 @@ var _Pages = {
 								Command.create({
 									type: 'Localization',
 									name: res.key,
-									domain: res.domain,
+									domain: res.domain || null,
 									locale: res.locale,
 									localizedName: value
 								},
@@ -1137,12 +1144,28 @@ var _Pages = {
 		}
 
 		var div = $('<div id="' + idString + '" class="node localization-element ' + (entity.tag === 'html' ? ' html_element' : '') + ' "></div>');
+
+		// add node id to enable hover effect
+		div.data('nodeId', (_Entities.isContentElement(entity) ? entity.parent.id : entity.id ));
+
 		var displayName = getElementDisplayName(entity);
 		var iconClass = _Icons.getFullSpriteClass(_Elements.getElementIcon(entity));
 
-		div.append('<i class="typeIcon ' + iconClass + '" />'
-			+ (!_Entities.isContentElement(entity) ? ('<b title="' + displayName + '" class="tag_ name_">' + fitStringToWidth(displayName, 200) + '</b>') : ('<div class="content_">' + escapeTags(entity.content) + '</div>'))
-			+ _Elements.classIdString(entity._html_id, entity._html_class));
+		var detailHtml = '';
+
+		if (entity.type === 'Content') {
+			detailHtml = '<div class="content_">' + fitStringToWidth(escapeTags(entity.content), 200) + '</div>';
+		} else if (entity.type === 'Template') {
+			if (entity.name) {
+				detailHtml = '<div class="content_">' + displayName + '</div>';
+			} else {
+				detailHtml = '<div class="content_">' + escapeTags(entity.content) + '</div>';
+			}
+		} else {
+			detailHtml = '<b title="' + displayName + '" class="tag_ name_">' + fitStringToWidth(displayName, 200) + '</b>';
+		}
+
+		div.append('<i class="typeIcon ' + iconClass + '" />' + detailHtml + _Elements.classIdString(entity._html_id, entity._html_class));
 
 		if (_Entities.isContentElement(entity)) {
 
@@ -1156,7 +1179,7 @@ var _Pages = {
 
 		container.append(div);
 
-		_Entities.setMouseOver(div);
+		_Entities.setMouseOver(div, undefined, ((entity.syncedNodesIds&&entity.syncedNodesIds.length)?entity.syncedNodesIds:[entity.sharedComponentId]));
 
 		return div;
 	},
@@ -1164,7 +1187,7 @@ var _Pages = {
 		if (!id) {
 			return;
 		}
-		Command.get(id, "id,name", function(sourceSchemaNode) {
+		Command.get(id, 'id,name', function(sourceSchemaNode) {
 
 			var typeKey = sourceSchemaNode.name.toLowerCase();
 			LSWrapper.setItem(_Pages.selectedTypeKey, id);
@@ -1208,7 +1231,7 @@ var _Pages = {
 		lastId = lastId || id;
 		stack = stack || [];
 		stack.push(id);
-		Command.get(id, "id,parent", function(obj) {
+		Command.get(id, 'id,parent', function(obj) {
 			if (obj.parent) {
 				_Pages.expandTreeNode(obj.parent.id, stack, lastId);
 			} else {

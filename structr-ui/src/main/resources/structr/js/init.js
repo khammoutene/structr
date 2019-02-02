@@ -30,7 +30,7 @@ var expandedIdsKey = 'structrTreeExpandedIds_' + port;
 var lastMenuEntryKey = 'structrLastMenuEntry_' + port;
 var pagerDataKey = 'structrPagerData_' + port + '_';
 var autoRefreshDisabledKey = 'structrAutoRefreshDisabled_' + port;
-var detailsObjectId = 'structrDetailsObjectId_' + port;
+var detailsObjectIdKey = 'structrDetailsObjectId_' + port;
 var dialogDataKey = 'structrDialogData_' + port;
 var dialogHtmlKey = 'structrDialogHtml_' + port;
 var scrollInfoKey = 'structrScrollInfoKey_' + port;
@@ -960,6 +960,9 @@ var Structr = {
 	getActiveModuleName: function () {
 		return LSWrapper.getItem(lastMenuEntryKey);
 	},
+	getActiveModule: function() {
+		return Structr.modules[Structr.getActiveModuleName()];
+	},
 	isModuleActive: function (module) {
 		return (module._moduleName === Structr.getActiveModuleName());
 	},
@@ -1251,7 +1254,8 @@ var Structr = {
 		$('.structr-version').html('');
 	},
 	getId: function(element) {
-		return Structr.getIdFromPrefixIdString($(element).prop('id'), 'id_') || undefined;
+		var id = Structr.getIdFromPrefixIdString($(element).prop('id'), 'id_') || $(element).data('nodeId');
+		return id || undefined;
 	},
 	getIdFromPrefixIdString: function(idString, prefix) {
 		if (!idString || !idString.startsWith(prefix)) {

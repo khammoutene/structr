@@ -684,14 +684,14 @@ public class Importer {
 
 						}
 
-					} else if ( DeployCommand.endsWithUuid(src) ) {
+					} else if (DeployCommand.endsWithUuid(src)) {
+
 						final String uuid = src.substring(src.length() - 32);
 						template = (DOMNode)StructrApp.getInstance().nodeQuery(NodeInterface.class).and(GraphObject.id, uuid).getFirst();
 
 						if (template == null) {
 
 							System.out.println("##################################### template with UUID " + uuid + " not found, this is a known bug");
-
 						}
 
 					} else {
@@ -701,12 +701,11 @@ public class Importer {
 
 							template = Importer.findTemplateByName(src);
 
-								if(template == null){
+							if (template == null) {
 
-									template = createNewTemplateNode(parent, node.childNodes());
-									isNewTemplateOrComponent = true;
-
-								}
+								template = createNewTemplateNode(parent, node.childNodes());
+								isNewTemplateOrComponent = true;
+							}
 						}
 					}
 
@@ -756,7 +755,7 @@ public class Importer {
 						component = Importer.findSharedComponentByName(src);
 					}
 
-					if(component == null){
+					if (component == null) {
 
 						component = createSharedComponent(node);
 					}
@@ -1229,7 +1228,8 @@ public class Importer {
 
 			final String fullPath = path + "/" + fileName;
 
-			File fileNode = fileExists(fullPath, checksum);
+
+			File fileNode = fileExists(PathHelper.removeRelativeParts(fullPath), checksum);
 			if (fileNode == null) {
 
 				if (ImageHelper.isImageType(fileName)) {
@@ -1423,7 +1423,7 @@ public class Importer {
 
 		contentNode.setVisibility(publicVisible, authVisible);
 
-		if(parent != null){
+		if (parent != null) {
 
 			parent.appendChild(contentNode);
 		}

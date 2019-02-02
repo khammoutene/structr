@@ -51,6 +51,7 @@ import org.structr.rest.RestMethodResult;
 import org.structr.rest.auth.AuthHelper;
 import org.structr.rest.exception.NotAllowedException;
 import org.structr.rest.resource.Resource;
+import org.structr.schema.action.ActionContext;
 import org.structr.web.entity.User;
 import org.structr.web.servlet.HtmlServlet;
 
@@ -197,7 +198,7 @@ public class RegistrationResource extends Resource {
 
 		replacementMap.put(toPlaceholder("eMail"), userEmail);
 		replacementMap.put(toPlaceholder("link"),
-			getTemplateText(TemplateKey.BASE_URL, "http://" + appHost + ":" + httpPort, localeString)
+			getTemplateText(TemplateKey.BASE_URL, ActionContext.getBaseUrl(securityContext.getRequest()), localeString)
 			      + getTemplateText(TemplateKey.CONFIRM_REGISTRATION_PAGE, HtmlServlet.CONFIRM_REGISTRATION_PAGE, localeString)
 			+ "?" + getTemplateText(TemplateKey.CONFIRM_KEY_KEY, HtmlServlet.CONFIRM_KEY_KEY, localeString) + "=" + confKey
 			+ "&" + getTemplateText(TemplateKey.TARGET_PAGE_KEY, HtmlServlet.TARGET_PAGE_KEY, localeString) + "=" + getTemplateText(TemplateKey.TARGET_PAGE, "register_thanks", localeString)
@@ -416,7 +417,7 @@ public class RegistrationResource extends Resource {
 				propertySet.remove(credentialKey.jsonName());
 				propertySet.remove("confirmationKey");
 
-				PropertyMap props = PropertyMap.inputTypeToJavaType(securityContext, Principal.class, propertySet);
+				PropertyMap props = PropertyMap.inputTypeToJavaType(securityContext, StructrApp.getConfiguration().getNodeEntityClass("Principal"), propertySet);
 
 				// Remove any property which is not included in configuration
 				// eMail is mandatory and necessary
