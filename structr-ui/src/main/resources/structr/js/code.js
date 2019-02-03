@@ -331,7 +331,7 @@ var _Code = {
 						children.push({
 							id: 'properties-' + entity.id + '-' + entity.name,
 							text: 'Properties',
-							children: entity.schemaProperties.length > 0,
+							children: (entity.schemaProperties.length + entity.relatedTo.length + entity.relatedFrom.length) > 0,
 							icon: 'fa fa-sliders gray',
 							data: data
 						});
@@ -491,7 +491,7 @@ var _Code = {
 							});
 							displayFunction(filtered.map(function(s) {
 								return {
-									id: s.declaringUuid || s.name,
+									id: (s.declaringUuid || s.name) + '-' + s.declaringClass + '-' + s.propertyType,
 									type: 'SchemaProperty',
 									name: s.name,
 									propertyType: s.declaringPropertyType ? s.declaringPropertyType : s.propertyType,
