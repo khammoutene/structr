@@ -140,9 +140,36 @@ var _Code = {
 
 			codeTree.on('activate_node.jstree', _Code.handleTreeClick);
 			codeTree.on('refresh.jstree', _Code.activateLastClicked);
+			codeTree.on('copy_node.jstree', _Code.copyNode);
 
 			_Code.loadFavorites(function() {
-				_TreeHelper.initTree(codeTree, _Code.treeInitFunction, 'structr-ui-code');
+
+				$(codeTree).jstree({
+					plugins: ["themes", "dnd", "search", "state", "types", "wholerow"],
+					core: {
+						animation: 0,
+						state: {
+							key: 'structr-ui-code'
+						},
+						async: true,
+						data: _Code.treeInitFunction,
+						check_callback: (op, node, par, pos, more) => {
+							switch (op) {
+								case 'copy_node':
+									return _Code.allowMove(node, par, pos, more);
+								default:
+									return true;
+							}
+						},
+						animation: 0,
+						async: true,
+					},
+					dnd: {
+						large_drag_target: true,
+						large_drop_target: true,
+						always_copy: true
+					}
+				});
 			});
 
 			$(window).off('resize').resize(function() {
@@ -249,6 +276,7 @@ var _Code = {
 						id: 'root',
 						text: 'Types',
 						children: [
+							{ id: 'worksets', text: 'Working Sets', children: true, icon: _Icons.folder_icon },
 							{ id: 'custom', text: 'Custom', children: true, icon: _Icons.folder_icon },
 							{ id: 'builtin', text: 'Built-In', children: true, icon: _Icons.folder_icon }
 						],
@@ -512,6 +540,20 @@ var _Code = {
 				}
 		}
 
+	},
+	allowMove: function(node, parent, pos, more) {
+
+		if (node && node.data && node.data.type && node.data.type === 'SchemaNode' && parent.id === 'worksets') {
+			return true;
+		}
+
+		return false;
+	},
+	copyNode: function(evt, data) {
+		console.log(evt);
+		console.log(data);
+		evt.preventDefault();
+		evt.stopPropagation();
 	},
 	clearMainArea: function() {
 		fastRemoveAllChildren(codeContents[0]);
