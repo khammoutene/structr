@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -66,11 +66,13 @@ public class APIBuilderModule implements StructrModule, APIBuilder {
 
 		final boolean enterpriseEdition = licenseManager == null || licenseManager.isEdition(LicenseManager.Enterprise);
 
-		// Enterprise only
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "flow", new FlowFunction());
-		
 		DataSources.put(enterpriseEdition, LicenseManager.Enterprise, "flowDataSource", new FlowContainerDataSource());
+	}
 
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
+
+		Functions.put(licenseManager, new FlowFunction());
 	}
 
 	@Override

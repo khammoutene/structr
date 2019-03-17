@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -80,8 +80,8 @@ import org.structr.core.function.Functions;
 import org.structr.core.property.PropertyMap;
 import org.structr.javaparser.entity.AddJarsToIndexFunction;
 import org.structr.javaparser.entity.ClassOrInterface;
-import org.structr.javaparser.entity.JavaInterface;
 import org.structr.javaparser.entity.JavaClass;
+import org.structr.javaparser.entity.JavaInterface;
 import org.structr.javaparser.entity.Method;
 import org.structr.javaparser.entity.Module;
 import org.structr.javaparser.entity.Package;
@@ -117,18 +117,17 @@ public class JavaParserModule implements StructrModule {
 
 	@Override
 	public void onLoad(final LicenseManager licenseManager) {
+	}
 
-//		final boolean basicEdition         = licenseManager == null || licenseManager.isEdition(LicenseManager.Basic);
-//		final boolean smallBusinessEdition = licenseManager == null || licenseManager.isEdition(LicenseManager.SmallBusiness);
-		final boolean enterpriseEdition    = licenseManager == null || licenseManager.isEdition(LicenseManager.Enterprise);
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
 
-		// Enterprise only
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "index_source_tree",               new IndexSourceTreeFunction());
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "parse_source_tree",               new ParseSourceTreeFunction());
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "analyze_source_tree",             new AnalyzeSourceTreeFunction());
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "parse_java",                      new ParseJavaFunction());
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "analyze_java",                    new AnalyzeJavaFunction());
-		Functions.put(enterpriseEdition, LicenseManager.Enterprise, "add_jars_to_index",               new AddJarsToIndexFunction());
+		Functions.put(licenseManager, new IndexSourceTreeFunction());
+		Functions.put(licenseManager, new ParseSourceTreeFunction());
+		Functions.put(licenseManager, new AnalyzeSourceTreeFunction());
+		Functions.put(licenseManager, new ParseJavaFunction());
+		Functions.put(licenseManager, new AnalyzeJavaFunction());
+		Functions.put(licenseManager, new AddJarsToIndexFunction());
 	}
 
 	/**

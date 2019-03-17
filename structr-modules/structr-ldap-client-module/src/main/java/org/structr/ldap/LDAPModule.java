@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -31,6 +31,10 @@ public class LDAPModule implements StructrModule {
 
 	@Override
 	public void onLoad(final LicenseManager licenseManager) {
+	}
+
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
 	}
 
 	@Override

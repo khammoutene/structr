@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -76,6 +76,7 @@ import org.structr.schema.compiler.BlacklistUnlicensedTypes;
 import org.structr.schema.compiler.ExtendNotionPropertyWithUuid;
 import org.structr.schema.compiler.MigrationHandler;
 import org.structr.schema.compiler.NodeExtender;
+import org.structr.schema.compiler.RemoveClassesWithUnknownSymbols;
 import org.structr.schema.compiler.RemoveDuplicateClasses;
 import org.structr.schema.compiler.RemoveMethodsWithUnusedSignature;
 import org.structr.schema.export.StructrSchema;
@@ -103,6 +104,7 @@ public class SchemaService implements Service {
 		migrationHandlers.add(new ExtendNotionPropertyWithUuid());
 		migrationHandlers.add(new BlacklistUnlicensedTypes());
 		migrationHandlers.add(new RemoveDuplicateClasses());
+		migrationHandlers.add(new RemoveClassesWithUnknownSymbols());
 	}
 
 	@Override
@@ -210,6 +212,33 @@ public class SchemaService implements Service {
 							// compile all classes at once and register
 							final Map<String, Class> newTypes = nodeExtender.compile(errorBuffer);
 
+							for (final Class newType : newTypes.values()) {
+
+								// instantiate classes to execute static initializer of helpers
+								try {
+
+									// do full reload
+									config.registerEntityType(newType);
+									newType.newInstance();
+
+								} catch (final Throwable t) {
+
+									// abstract classes and interfaces will throw errors here
+									if (newType.isInterface() || Modifier.isAbstract(newType.getModifiers())) {
+										// ignore
+									} else {
+
+										// everything else is a severe problem and should be not only reported but also
+										// make the schema compilation fail (otherwise bad things will happen later)
+										errorBuffer.add(new InstantiationErrorToken(newType.getName(), t));
+										logger.error("Unable to instantiate dynamic entity {}", newType.getName(), t);
+									}
+								}
+							}
+
+							// calculate difference between previous and new classes
+							removedClasses.keySet().removeAll(StructrApp.getConfiguration().getTypeAndPropertyMapping().keySet());
+
 							if (errorBuffer.hasError()) {
 
 								if (Settings.SchemAutoMigration.getValue()) {
@@ -247,32 +276,6 @@ public class SchemaService implements Service {
 								retryCount = 0;
 							}
 
-							for (final Class newType : newTypes.values()) {
-
-								// instantiate classes to execute static initializer of helpers
-								try {
-
-									// do full reload
-									config.registerEntityType(newType);
-									newType.newInstance();
-
-								} catch (final Throwable t) {
-
-									// abstract classes and interfaces will throw errors here
-									if (newType.isInterface() || Modifier.isAbstract(newType.getModifiers())) {
-										// ignore
-									} else {
-
-										// everything else is a severe problem and should be not only reported but also
-										// make the schema compilation fail (otherwise bad things will happen later)
-										errorBuffer.add(new InstantiationErrorToken(newType.getName(), t));
-										logger.error("Unable to instantiate dynamic entity {}", newType.getName(), t);
-									}
-								}
-							}
-
-							// calculate difference between previous and new classes
-							removedClasses.keySet().removeAll(StructrApp.getConfiguration().getTypeAndPropertyMapping().keySet());
 						}
 
 						// create properties and views etc.
@@ -361,6 +364,8 @@ public class SchemaService implements Service {
 
 				} catch (FrameworkException fex) {
 
+					fex.printStackTrace();
+
 					FlushCachesCommand.flushAll();
 
 					logger.error("Unable to compile dynamic schema: {}", fex.getMessage());
@@ -369,6 +374,8 @@ public class SchemaService implements Service {
 					errorBuffer.getErrorTokens().addAll(fex.getErrorBuffer().getErrorTokens());
 
 				} catch (Throwable t) {
+
+					t.printStackTrace();
 
 					FlushCachesCommand.flushAll();
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -45,6 +45,10 @@ public class PaymentsModule implements StructrModule {
 		checkString("paypal.signature", Settings.getOrCreateStringSetting("paypal", "signature").getValue(), "paypal.signature not set in structr.conf.");
 		checkString("paypal.redirect",  Settings.getOrCreateStringSetting("paypal", "redirect").getValue(),  "paypal.redirect not set in structr.conf.");
 		checkString("stripe.apikey",    Settings.getOrCreateStringSetting("stripe", "apikey").getValue(),    "stripe.apikey not set in structr.conf.");
+	}
+
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
 	}
 
 	@Override

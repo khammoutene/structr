@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.structr.api.Predicate;
+import org.structr.api.graph.Identity;
 import org.structr.api.graph.Node;
 import org.structr.api.graph.PropertyContainer;
 import org.structr.api.graph.RelationshipType;
@@ -107,11 +108,6 @@ public class SuperUser implements Principal, AccessControllable, NonIndexed {
 	@Override
 	public boolean isAdmin() {
 		return true;
-	}
-
-	@Override
-	public long getId() {
-		return -1L;
 	}
 
 	public String getRealName() {
@@ -433,7 +429,7 @@ public class SuperUser implements Principal, AccessControllable, NonIndexed {
 	}
 
 	@Override
-	public void setRawPathSegmentId(final long rawSegmentID) {
+	public void setRawPathSegmentId(final Identity rawSegmentId) {
 	}
 
 	@Override

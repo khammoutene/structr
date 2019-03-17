@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -36,6 +36,13 @@ public interface StructrModule {
 	 * @param licenseManager the license manager or null
 	 */
 	void onLoad(final LicenseManager licenseManager);
+
+	/**
+	 * Registers the functions of the module
+	 *
+	 * @param licenseManager the license manager or null
+	 */
+	void registerModuleFunctions(final LicenseManager licenseManager);
 
 	/**
 	 * Returns the name of this module, with an optional version number.

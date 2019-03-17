@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -323,8 +323,13 @@ img.disabled {
 	width: 385px;
 }
 
-#remoteWidgetsFilter  {
-	margin: -6px 0 6px 0;
+#remoteWidgets input:first-of-type  {
+	margin-top: -6px;
+}
+
+#widgetsSlideout select#widget-server-selector {
+	width: calc(100% - 65px);
+	margin-left: 1px;
 }
 
 #widgetsSlideout button.add_widgets_icon {
@@ -350,7 +355,7 @@ img.disabled {
 	margin: 4px 25px 0 25px;
 }
 
-#previews::before {
+#previews.no-preview::before {
 	content: "- no preview selected -";
 	font-style: italic;
 	position: absolute;
@@ -2316,6 +2321,8 @@ input.property-name:disabled {
 
 .schema-visibility-table .toggle-column-header {
    width: 80px;
+   text-align: left;
+   padding-left: 8px;
 }
 
 .schema-visibility-table th .invert-icon {
@@ -2326,8 +2333,8 @@ input.property-name:disabled {
 	margin-left: 40px;
 }
 
-.schema-visibility-table td .toggle-type {
-	float: right;
+.schema-visibility-table td:first-child {
+	text-align: center;
 }
 
 .schema-visibility-table th .toggle-all-types{
@@ -3119,6 +3126,10 @@ table#relationship-options {
 	table-layout: fixed;
 }
 
+#relationship-options [disabled] {
+    color: rgb(126,126,126);
+}
+
 #relationship-options #basic-options {
 	text-align: center;
 	padding: 10px 0px 20px 0px;
@@ -3497,20 +3508,24 @@ input.tree-search-input:focus {
 	margin-right: 8px ! important;
 }
 
-.tree-contents, .tree-context, #crawler-list, #flows-canvas {
+.tree-contents, .tree-context {
 	vertical-align: top;
 	background-color: #fff;
 	box-shadow: 0px 0px 36px rgba(127,127,127,.1);
 	border: 1px solid rgba(0,0,0,.125);
 	padding: 12px;
-	margin-top: 8px;
+	margin-top: 0;
 	overflow: auto;
 	font-size: 9pt;
 	position: absolute;
 }
 
-#code-contents, #code-context, #simple-pages-contents, #simple-pages-context {
-	margin-top: 0;
+.tree-contents {
+	overflow: hidden;
+}
+
+.tree-contents-with-top-buttons {
+	margin-top: 8px;
 }
 
 #code-context .code-favorite {
@@ -4531,7 +4546,7 @@ input#element-class {
 	background-color: transparent;
 	position: absolute;
 	top: 70px;
-	left: 222px;
+	left: 300px;
 	cursor: ew-resize;
 	border: 1px solid transparent;
 }
@@ -5009,4 +5024,72 @@ table.refactoring-helper td input {
 
 .select2-container--default .select2-search--dropdown .select2-search__field {
 	background-color: #fff;
+}
+
+dl.help-definitions dt {
+	font-weight: bold;
+}
+
+dl.help-definitions dd {
+	margin-bottom: 6px;
+}
+
+#structr-console .terminal-output span,
+#structr-console .terminal-output a,
+#structr-console .cmd div,
+#structr-console .cmd span,
+#structr-console .terminal td,
+#structr-console .terminal pre,
+#structr-console .terminal h1,
+#structr-console .terminal h2,
+#structr-console .terminal h3,
+#structr-console .terminal h4,
+#structr-console .terminal h5,
+#structr-console .terminal h6 {
+	user-select: text;
+}
+
+.tab-group a.tab-group-toggle {
+	text-decoration: none;
+}
+
+.tab-group .tab-group-content {
+	display: intial;
+}
+.tab-group.collapsed .tab-group-content {
+	display: none;
+}
+
+.tab-group i.collapsed {
+	display: none;
+}
+.tab-group i.expanded {
+	display: inline-block;
+}
+
+.tab-group.collapsed i.collapsed {
+	display: inline-block;
+}
+.tab-group.collapsed i.expanded {
+	display: none;
+}
+
+.dialogText .dialog-padding {
+	padding: 10px;
+}
+
+.dialogText table.full-width {
+	width: calc(100% - 10px);
+}
+
+.dialogText table.full-width th {
+	text-align: left;
+}
+
+.dialogText table.full-width th, .dialogText table.full-width td {
+	padding: 4px;
+}
+
+.dialogText table.full-width td input {
+	width: calc(100% - 4px);
 }

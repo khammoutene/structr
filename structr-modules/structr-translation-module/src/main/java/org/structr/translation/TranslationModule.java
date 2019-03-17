@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -34,16 +34,14 @@ public class TranslationModule implements StructrModule {
 	public static final Setting<String> TranslationGoogleAPIKey      = new StringSetting(Settings.miscGroup,   "Translation Module", "translation.google.apikey", "");
 	public static final Setting<String> TranslationDeepLAPIKey       = new StringSetting(Settings.miscGroup,   "Translation Module", "translation.deepl.apikey", "");
 
-
 	@Override
 	public void onLoad(final LicenseManager licenseManager) {
+	}
 
-//		final boolean basicEdition         = licenseManager == null || licenseManager.isEdition(LicenseManager.Basic);
-		final boolean smallBusinessEdition = licenseManager == null || licenseManager.isEdition(LicenseManager.SmallBusiness);
-//		final boolean enterpriseEdition    = licenseManager == null || licenseManager.isEdition(LicenseManager.Enterprise);
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
 
-		Functions.put(smallBusinessEdition, LicenseManager.Basic, "translate",        new TranslateFunction());
-
+		Functions.put(licenseManager, new TranslateFunction());
 	}
 
 	@Override

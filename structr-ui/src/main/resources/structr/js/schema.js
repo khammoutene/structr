@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -124,6 +124,7 @@ var _Schema = {
 		+ '<option value="BooleanArray">Boolean[]</option>'
 		+ '<option value="Enum">Enum</option>'
 		+ '<option value="Date">Date</option>'
+		+ '<option value="DateArray">Date[]</option>'
 		+ '<option value="Count">Count</option>'
 		+ '<option value="Function" data-indexed="false">Function</option>'
 		+ '<option value="Notion">Notion</option>'
@@ -1081,6 +1082,13 @@ var _Schema = {
 				$('#target-type-name').text(nodes[rel.targetId].name).data('objectId', rel.targetId);
 
 				$('#cascading-delete-selector').val(rel.cascadingDeleteFlag || 0);
+
+				Structr.appendInfoTextToElement({
+					text: '<dl class="help-definitions"><dt>NONE</dt><dd>No cascading delete</dd><dt>SOURCE_TO_TARGET</dt><dd>Delete target node when source node is deleted</dd><dt>TARGET_TO_SOURCE</dt><dd>Delete source node when target node is deleted</dd><dt>ALWAYS</dt><dd>Delete source node if target node is deleted AND delete target node if source node is deleted</dd><dt>CONSTRAINT_BASED</dt><dd>Delete source or target node if deletion of the other side would result in a constraint violation on the node (e.g. notNull constraint)</dd></dl>',
+					element: $('#cascading-delete-selector'),
+					insertAfter: true
+				});
+
 				$('#autocreate-selector').val(rel.autocreationFlag || 0);
 				$('#propagation-selector').val(rel.permissionPropagation || 'None');
 				$('#read-selector').val(rel.readPropagation || 'Remove');
@@ -3027,23 +3035,59 @@ var _Schema = {
 			container.append(html);
 
 			$('#reset-schema-positions', container).off('click').on('click', _Schema.clearPositions);
-			var layoutSelector      = $('#saved-layout-selector', container);
-			var layoutFilenameInput = $('#layout-filename', container);
+			var layoutSelector        = $('#saved-layout-selector', container);
+			var layoutNameInput       = $('#layout-name', container);
+			var createNewLayoutButton = $('#create-new-layout', container);
+			var updateLayoutButton    = $('#update-layout', container);
+			var restoreLayoutButton   = $('#restore-layout', container);
+			var downloadLayoutButton  = $('#download-layout', container);
+			var deleteLayoutButton    = $('#delete-layout', container);
 
-			var saveLayoutFunction = function(mode) {
+			var layoutSelectorChangeHandler = function () {
 
-				var fileName = layoutFilenameInput.val().replaceAll(/[^\w_\-\. ]+/, '-');
+				var selectedOption = $(':selected:not(:disabled)', layoutSelector);
 
-				if (fileName && fileName.length) {
+				if (selectedOption.length === 0) {
 
-					Command.layouts(mode, fileName, JSON.stringify(_Schema.getSchemaLayoutConfiguration()), function(data) {
+					Structr.disableButton(updateLayoutButton);
+					Structr.disableButton(restoreLayoutButton);
+					Structr.disableButton(downloadLayoutButton);
+					Structr.disableButton(deleteLayoutButton);
+
+				} else {
+
+					Structr.enableButton(restoreLayoutButton);
+					Structr.enableButton(downloadLayoutButton);
+
+					var username = selectedOption.closest('optgroup').prop('label');
+
+					if (username !== 'null' && username !== me.username) {
+						Structr.disableButton(updateLayoutButton);
+						Structr.disableButton(deleteLayoutButton);
+					} else {
+						Structr.enableButton(updateLayoutButton);
+						Structr.enableButton(deleteLayoutButton);
+					}
+				}
+			};
+			layoutSelectorChangeHandler();
+
+			layoutSelector.on('change', layoutSelectorChangeHandler);
+
+			createNewLayoutButton.click(function() {
+
+				var layoutName = layoutNameInput.val();
+
+				if (layoutName && layoutName.length) {
+
+					Command.createApplicationConfigurationDataNode('layout', layoutName, JSON.stringify(_Schema.getSchemaLayoutConfiguration()), function(data) {
 
 						if (!data.error) {
 
 							new MessageBuilder().success("Layout saved").show();
 
-							updateLayoutSelector();
-							layoutFilenameInput.val('');
+							refreshLayoutSelector();
+							layoutNameInput.val('');
 
 							blinkGreen(layoutSelector);
 
@@ -3056,153 +3100,156 @@ var _Schema = {
 				} else {
 					Structr.error('Schema layout name is required.');
 				}
-			};
-
-			$('#create-layout-file', container).click(function() {
-				saveLayoutFunction('add');
 			});
 
-			$('#overwrite-layout-file', container).click(function() {
-				saveLayoutFunction('overwrite');
-			});
-
-			$('#restore-layout').click(function() {
+			updateLayoutButton.click(function() {
 
 				var selectedLayout = layoutSelector.val();
 
-				if (selectedLayout && selectedLayout.length) {
+				Command.setProperty(selectedLayout, 'content', JSON.stringify(_Schema.getSchemaLayoutConfiguration()), false, function(data) {
 
-					Command.layouts('get', selectedLayout, null, function(data) {
+					if (!data.error) {
 
-						var loadedConfig;
+						new MessageBuilder().success("Layout saved").show();
 
-						try {
-							loadedConfig = JSON.parse(data.schemaLayout);
+						blinkGreen(layoutSelector);
 
-							if (loadedConfig._version) {
+					} else {
 
-								switch (loadedConfig._version) {
-									case 2: {
+						new MessageBuilder().error().title(data.error).text(data.message).show();
+					}
+				});
+			});
 
-										_Schema.zoomLevel = loadedConfig.zoom;
-										LSWrapper.setItem(_Schema.schemaZoomLevelKey, _Schema.zoomLevel);
-										_Schema.setZoom(_Schema.zoomLevel, instance, [0,0], $('#schema-graph')[0]);
-										$( "#zoom-slider" ).slider('value', _Schema.zoomLevel);
+			restoreLayoutButton.click(function() {
 
-										_Schema.updateOverlayVisibility(loadedConfig.showRelLabels);
+				var selectedLayout = layoutSelector.val();
 
-										var hiddenTypes = loadedConfig.hiddenTypes;
-										hiddenTypes = hiddenTypes.filter(function(typeName) {
-											// Filter out types that do not exist in the schema
-											return (_Schema.availableTypeNames.indexOf(typeName) !== -1);
-										});
-										_Schema.hiddenSchemaNodes = hiddenTypes;
-										LSWrapper.setItem(_Schema.hiddenSchemaNodesKey, JSON.stringify(_Schema.hiddenSchemaNodes));
+				Command.getApplicationConfigurationDataNode(selectedLayout, function(data) {
 
-										// update the list in the visibility table
-										$('#schema-options-table input.toggle-type').prop('checked', true);
-										_Schema.hiddenSchemaNodes.forEach(function(hiddenType) {
-											$('#schema-options-table input.toggle-type[data-structr-type="' + hiddenType + '"]').prop('checked', false);
-										});
+					try {
 
-										var connectorStyle = loadedConfig.connectorStyle;
-										$('#connector-style').val(connectorStyle);
-										_Schema.connectorStyle = connectorStyle;
-										LSWrapper.setItem(_Schema.schemaConnectorStyleKey, connectorStyle);
+						var loadedConfig = JSON.parse(data.content);
 
-										var positions = loadedConfig.positions;
-										LSWrapper.setItem(_Schema.schemaPositionsKey, positions);
-										_Schema.applyNodePositions(positions);
-									}
-										break;
+						if (loadedConfig._version) {
 
-									default:
-										Structr.error('Cannot restore layout: Unknown layout version - was this layout created with a newer version of structr than the one currently running?');
-								}
+							switch (loadedConfig._version) {
+								case 2: {
 
-							} else {
+									_Schema.zoomLevel = loadedConfig.zoom;
+									LSWrapper.setItem(_Schema.schemaZoomLevelKey, _Schema.zoomLevel);
+									_Schema.setZoom(_Schema.zoomLevel, instance, [0,0], $('#schema-graph')[0]);
+									$( "#zoom-slider" ).slider('value', _Schema.zoomLevel);
 
-								if (loadedConfig[Object.keys(loadedConfig)[0]].position) {
-									// convert old file type
-									var schemaPositions = {};
-									Object.keys(loadedConfig).forEach(function(type) {
-										schemaPositions[type] = loadedConfig[type].position;
+									_Schema.updateOverlayVisibility(loadedConfig.showRelLabels);
+
+									var hiddenTypes = loadedConfig.hiddenTypes;
+									hiddenTypes = hiddenTypes.filter(function(typeName) {
+										// Filter out types that do not exist in the schema
+										return (_Schema.availableTypeNames.indexOf(typeName) !== -1);
 									});
-									loadedConfig = schemaPositions;
+									_Schema.hiddenSchemaNodes = hiddenTypes;
+									LSWrapper.setItem(_Schema.hiddenSchemaNodesKey, JSON.stringify(_Schema.hiddenSchemaNodes));
+
+									// update the list in the visibility table
+									$('#schema-options-table input.toggle-type').prop('checked', true);
+									_Schema.hiddenSchemaNodes.forEach(function(hiddenType) {
+										$('#schema-options-table input.toggle-type[data-structr-type="' + hiddenType + '"]').prop('checked', false);
+									});
+
+									var connectorStyle = loadedConfig.connectorStyle;
+									$('#connector-style').val(connectorStyle);
+									_Schema.connectorStyle = connectorStyle;
+									LSWrapper.setItem(_Schema.schemaConnectorStyleKey, connectorStyle);
+
+									var positions = loadedConfig.positions;
+									LSWrapper.setItem(_Schema.schemaPositionsKey, positions);
+									_Schema.applyNodePositions(positions);
 								}
+									break;
 
-								LSWrapper.setItem(_Schema.schemaPositionsKey, loadedConfig);
-								_Schema.applyNodePositions(loadedConfig);
-
-								new MessageBuilder().info("This layout was created using an older version of Structr. To make use of newer features you should delete and re-create it with the current version.").show();
+								default:
+									Structr.error('Cannot restore layout: Unknown layout version - was this layout created with a newer version of structr than the one currently running?');
 							}
 
-							Structr.saveLocalStorage();
+						} else {
 
-							_Schema.reload();
+							if (loadedConfig[Object.keys(loadedConfig)[0]].position) {
+								// convert old file type
+								var schemaPositions = {};
+								Object.keys(loadedConfig).forEach(function(type) {
+									schemaPositions[type] = loadedConfig[type].position;
+								});
+								loadedConfig = schemaPositions;
+							}
 
-						} catch (e) {
-							Structr.error('Unreadable JSON - please make sure you are using JSON exported from this dialog!', true);
+							LSWrapper.setItem(_Schema.schemaPositionsKey, loadedConfig);
+							_Schema.applyNodePositions(loadedConfig);
+
+							new MessageBuilder().info("This layout was created using an older version of Structr. To make use of newer features you should delete and re-create it with the current version.").show();
 						}
-					});
-				} else {
-					Structr.error('Please select a schema to load.');
-				}
+
+						Structr.saveLocalStorage();
+
+						_Schema.reload();
+
+					} catch (e) {
+						console.warn(e);
+						Structr.error('Unreadable JSON - please make sure you are using JSON exported from this dialog!', true);
+					}
+				});
 			});
 
-			$('#download-layout').click(function() {
+			downloadLayoutButton.click(function() {
 
 				var selectedLayout = layoutSelector.val();
 
-				if (selectedLayout && selectedLayout.length) {
+				Command.getApplicationConfigurationDataNode(selectedLayout, function(data) {
 
-					Command.layouts('get', selectedLayout, null, function(data) {
+					var element = document.createElement('a');
+					element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.content));
+					element.setAttribute('download', selectedLayout + '.json');
 
-						var element = document.createElement('a');
-						element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.schemaLayout));
-						element.setAttribute('download', selectedLayout + '.json');
+					element.style.display = 'none';
+					document.body.appendChild(element);
 
-						element.style.display = 'none';
-						document.body.appendChild(element);
-
-						element.click();
-						document.body.removeChild(element);
-
-					});
-				} else {
-					Structr.error('Please select a schema to download.');
-				}
+					element.click();
+					document.body.removeChild(element);
+				});
 			});
 
-			$('#delete-layout', container).click(function() {
+			deleteLayoutButton.click(function() {
 
 				var selectedLayout = layoutSelector.val();
 
-				if (selectedLayout && selectedLayout.length) {
-
-					Command.layouts('delete', selectedLayout, null, function() {
-						updateLayoutSelector();
-						blinkGreen(layoutSelector);
-					});
-				} else {
-					Structr.error('Please select a schema to delete.');
-				}
+				Command.deleteNode(selectedLayout, false, function() {
+					refreshLayoutSelector();
+					blinkGreen(layoutSelector);
+				});
 			});
 
-			var updateLayoutSelector = function() {
+			var refreshLayoutSelector = function() {
 
-				Command.layouts('list', '', null, function(data) {
+				Command.getApplicationConfigurationDataNodesGroupedByUser('layout', function(grouped) {
 
 					layoutSelector.empty();
 					layoutSelector.append('<option selected value="" disabled>-- Select Layout --</option>');
 
-					data.layouts.forEach(function(layoutFile) {
+					grouped.forEach(function(group) {
 
-						layoutSelector.append('<option>' + layoutFile.slice(0, -5) + '</option>');
+						var optGroup = $('<optgroup label="' + group.ownerName + '"></optgroup>');
+						layoutSelector.append(optGroup);
+
+						group.configs.forEach(function(layout) {
+
+							optGroup.append('<option value="' + layout.id + '">' + layout.name + '</option>');
+						});
 					});
+
+					layoutSelectorChangeHandler();
 				});
 			};
-			updateLayoutSelector();
+			refreshLayoutSelector();
 		});
 	},
 	applyNodePositions:function(positions) {
@@ -3280,17 +3327,17 @@ var _Schema = {
 			},
 			{
 				caption: "Core Types",
-				filter: { isBuiltinType: true, isAbstract:false, category: 'core' },
+				filter: { isBuiltinType: true, category: 'core' },
 				exact: false
 			},
 			{
 				caption: "Html Types",
-				filter: { isBuiltinType: true, isAbstract:false, category: 'ui' },
+				filter: { isBuiltinType: true, category: 'ui' },
 				exact: false
 			},
 			{
 				caption: "Page Types",
-				filter: { isBuiltinType: true, isAbstract:false, category: 'html' },
+				filter: { isBuiltinType: true, category: 'html' },
 				exact: false
 			},
 			{
@@ -3322,7 +3369,7 @@ var _Schema = {
 
 			var schemaVisibilityTable = $('<table class="props schema-visibility-table"></table>');
 			schemaVisibilityTable.append('<tr><th class="" colspan=2>' + visType.caption + '</th></tr>');
-			schemaVisibilityTable.append('<tr><th class="toggle-column-header"><input type="checkbox" class="toggle-all-types"><i class="invert-all-types invert-icon ' + _Icons.getFullSpriteClass(_Icons.toggle_icon) + '" /> Visible</th><th>Type</th></tr>');
+			schemaVisibilityTable.append('<tr><th class="toggle-column-header"><input type="checkbox" title="Toggle all" class="toggle-all-types"><i class="invert-all-types invert-icon ' + _Icons.getFullSpriteClass(_Icons.toggle_icon) + '" title="Invert all"></i> Visible</th><th>Type</th></tr>');
 			tab.append(schemaVisibilityTable);
 
 			Command.query('SchemaNode', 1000, 1, 'name', 'asc', visType.filter, function(schemaNodes) {

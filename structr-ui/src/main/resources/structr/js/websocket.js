@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -317,9 +317,11 @@ function wsConnect() {
 					obj = StructrModel.create(data.data, null, false);
 				}
 
-				obj = StructrModel.update(data);
+				StructrModel.update(data);
 
-				StructrModel.callCallback(data.callback, obj);
+				if (command === 'SET_PERMISSION') {
+					StructrModel.callCallback(data.callback, obj);
+				}
 
 			} else if (command === 'GET' || command === 'GET_RELATIONSHIP' || command === 'GET_PROPERTIES') {
 
@@ -415,18 +417,6 @@ function wsConnect() {
 
 				StructrModel.callCallback(data.callback, result);
 
-			} else if (command.startsWith('WEBAPPDATA')) {
-
-				_Logger.log(_LogType.WS[command], result, data);
-
-				StructrModel.callCallback(data.callback, result);
-
-			} else if (command.startsWith('LAYOUTS')) {
-
-				_Logger.log(_LogType.WS[command], result, data);
-
-				StructrModel.callCallback(data.callback, data.data);
-
 			} else if (command.startsWith('LIST')) {
 
 				_Logger.log(_LogType.WS[command], result, data);
@@ -439,7 +429,7 @@ function wsConnect() {
 
 				StructrModel.callCallback(data.callback, result, data.rawResultCount);
 
-			} else if (command.startsWith('CLONE') || command === 'REPLACE_TEMPLATE') { console.log(command, data.callback)
+			} else if (command.startsWith('CLONE') || command === 'REPLACE_TEMPLATE') {
 
 				_Logger.log(_LogType.WS[command], result, data);
 
@@ -519,7 +509,7 @@ function wsConnect() {
 						}
 					}
 
-					if (command === 'CREATE' && entity.isPage) {
+					if (command === 'CREATE' && entity.isPage && lastMenuEntry === _Pages._moduleName) {
 						if (entity.createdBy === userId) {
 							setTimeout(function () {
 								var tab = $('#show_' + entity.id);

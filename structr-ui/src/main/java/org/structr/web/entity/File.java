@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -98,7 +98,7 @@ public interface File extends AbstractFile, Indexable, Linkable, JavaScriptSourc
 		type.setImplements(URI.create("#/definitions/JavaScriptSource"));
 		type.setImplements(URI.create("#/definitions/Favoritable"));
 		type.setExtends(URI.create("#/definitions/AbstractFile"));
-		type.setCategory("core");
+		type.setCategory("ui");
 
 		type.addStringProperty("url", PropertyView.Public, PropertyView.Ui);
 

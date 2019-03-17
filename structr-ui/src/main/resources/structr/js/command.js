@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -207,7 +207,7 @@ var Command = {
 	 *
 	 * The optional callback function will be executed with the result set as parameter.
 	 */
-	query: function(type, pageSize, page, sort, order, properties, callback, exact, view) {
+	query: function(type, pageSize, page, sort, order, properties, callback, exact, view, customView) {
 		var obj = {
 			command: 'QUERY',
 			pageSize: pageSize,
@@ -221,6 +221,7 @@ var Command = {
 		if (properties) obj.data.properties = JSON.stringify(properties);
 		if (exact !== null) obj.data.exact = exact;
 		if (view) obj.view = view;
+		if (customView) obj.data.customView = customView;
 		_Logger.log(_LogType.WS[obj.command], 'query()', obj, callback);
 		return sendObj(obj, callback);
 	},
@@ -1215,43 +1216,6 @@ var Command = {
 		return sendObj(obj, callback);
 	},
 	/**
-	 * Send a WEBAPPDATA command to the server.
-	 *
-	 * The server will return the stored data items
-	 */
-	appData: function(mode, category, name, value, callback) {
-		var obj  = {
-			command: 'WEBAPPDATA',
-			data: {
-				category: category,
-				mode: mode,
-				name: name
-			}
-		};
-		if (value && value.length) {
-			obj.data.value = value;
-		}
-		return sendObj(obj, callback);
-	},
-	/**
-	 * Send a LAYOUTS command to the server.
-	 *
-	 * The server will return the stored layout filenames
-	 */
-	layouts: function(mode, name, schemaLayout, callback) {
-		var obj  = {
-			command: 'LAYOUTS',
-			data: {
-				mode: mode,
-				name: name
-			}
-		};
-		if (schemaLayout && schemaLayout.length) {
-			obj.data.schemaLayout = schemaLayout;
-		}
-		return sendObj(obj, callback);
-	},
-	/**
 	 * Send a FIND_DUPLICATES command to the server.
 	 *
 	 * The server will return a list of all files with identical paths
@@ -1313,5 +1277,90 @@ var Command = {
 			}
 		};
 		return sendObj(obj, callback);
+	},
+	/**
+	 * Shortcut to create an ApplicationConfigurationDataNode
+	 */
+	createApplicationConfigurationDataNode: function(configType, name, content, callback) {
+		Command.create({
+			type: 'ApplicationConfigurationDataNode',
+			name: name,
+			configType: configType,
+			content: content
+		}, callback);
+	},
+	/**
+	 * Shortcut to get all ApplicationConfigurationDataNodes for a specific configType
+	 */
+	getApplicationConfigurationDataNodes: function(configType, customView, callback) {
+		return Command.query('ApplicationConfigurationDataNode', 1000, 1, 'name', true, { configType: configType }, callback, true, null, customView);
+	},
+	/**
+	 * Shortcut to get all ApplicationConfigurationDataNodes for a specific configType grouped by user
+	 */
+	getApplicationConfigurationDataNodesGroupedByUser: function(configType, callback) {
+		return Command.query('ApplicationConfigurationDataNode', 1000, 1, 'name', true, { configType: configType }, function(data) {
+
+			var grouped = {};
+			var ownerlessConfigs = [];
+
+			data.forEach(function(n) {
+				if (n.owner) {
+					if (!grouped[n.owner.name]) {
+						grouped[n.owner.name] = [];
+					}
+					grouped[n.owner.name].push(n);
+				} else {
+					ownerlessConfigs.push(n);
+				}
+			});
+
+			var ownerNames = Object.keys(grouped);
+
+			// sort by name
+			ownerNames.sort(function (a, b) {
+				if (a > b) { return 1; }
+				if (a < b) { return -1; }
+				return 0;
+			});
+
+			var sortedAndGrouped = [];
+
+			// add current users config first
+			var myIndex = ownerNames.indexOf(me.username);
+			if (myIndex !== -1) {
+				ownerNames.splice(myIndex,1);
+
+				sortedAndGrouped.push({
+					ownerName: me.username,
+					configs: grouped[me.username]
+				});
+			}
+
+			// add ownerless configs
+			if (ownerlessConfigs.length > 0) {
+				sortedAndGrouped.push({
+					ownerName: null,
+					configs: ownerlessConfigs
+				});
+			}
+
+			// add the other configs grouped by owner and sorted by ownername
+			ownerNames.forEach(function (on) {
+				sortedAndGrouped.push({
+					ownerName: on,
+					configs: grouped[on]
+				});
+			});
+
+			callback(sortedAndGrouped);
+
+		}, true, null, 'id,name,owner');
+	},
+	/**
+	 * Shortcut to get a single ApplicationConfigurationDataNode
+	 */
+	getApplicationConfigurationDataNode: function(id, callback) {
+		return Command.get(id, 'content', callback);
 	}
 };

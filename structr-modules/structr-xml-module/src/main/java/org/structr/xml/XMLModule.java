@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -33,8 +33,12 @@ public class XMLModule implements StructrModule, org.structr.module.xml.XMLModul
 
 	@Override
 	public void onLoad(final LicenseManager licenseManager) {
+	}
 
-		final boolean basicEdition         = licenseManager == null || licenseManager.isEdition(LicenseManager.Basic);
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
+
+//		final boolean basicEdition         = licenseManager == null || licenseManager.isEdition(LicenseManager.Basic);
 //		final boolean smallBusinessEdition = licenseManager == null || licenseManager.isEdition(LicenseManager.SmallBusiness);
 //		final boolean enterpriseEdition    = licenseManager == null || licenseManager.isEdition(LicenseManager.Enterprise);
 	}
@@ -46,7 +50,7 @@ public class XMLModule implements StructrModule, org.structr.module.xml.XMLModul
 
 	@Override
 	public Set<String> getDependencies() {
-		// CSV import depends on the API builder now
+		// XML import depends on the API builder now
 		return new LinkedHashSet<>(Arrays.asList(new String[] { "api-builder" } ));
 	}
 

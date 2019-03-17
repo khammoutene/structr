@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -35,6 +35,7 @@ import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.structr.api.service.LicenseManager;
 import org.structr.common.error.FrameworkException;
 import org.structr.core.GraphObject;
 import org.structr.core.GraphObjectMap;
@@ -53,7 +54,12 @@ public class ToExcelFunction extends Function<Object, Object> {
 
 	@Override
 	public String getName() {
-		return "to_excel()";
+		return "to_excel";
+	}
+
+	@Override
+	public int getRequiredLicense() {
+		return LicenseManager.Enterprise;
 	}
 
 	@Override

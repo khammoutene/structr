@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -19,6 +19,7 @@
 package org.structr.core.function;
 
 import java.util.Map;
+import org.structr.api.service.LicenseManager;
 import org.structr.common.SecurityContext;
 import org.structr.common.error.FrameworkException;
 import org.structr.core.app.Query;
@@ -29,9 +30,6 @@ import org.structr.core.property.PropertyMap;
 import org.structr.schema.ConfigurationProvider;
 import org.structr.schema.action.ActionContext;
 
-/**
- *
- */
 public class SearchFunction extends AbstractQueryFunction {
 
 	public static final String ERROR_MESSAGE_SEARCH    = "Usage: ${search(type, key, value)}. Example: ${search(\"User\", \"name\", \"abc\")}";
@@ -39,7 +37,12 @@ public class SearchFunction extends AbstractQueryFunction {
 
 	@Override
 	public String getName() {
-		return "search()";
+		return "search";
+	}
+
+	@Override
+	public int getRequiredLicense() {
+		return LicenseManager.Community;
 	}
 
 	@Override

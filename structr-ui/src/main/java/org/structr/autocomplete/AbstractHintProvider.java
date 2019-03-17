@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -68,12 +68,7 @@ public abstract class AbstractHintProvider {
 			for (final Hint hint : allHints) {
 
 				final GraphObjectMap item = new GraphObjectMap();
-				String functionName       = getFunctionName(hint.getReplacement());
-
-				// remove closing parenthesis
-				if (functionName.endsWith("()")) {
-					functionName = functionName.substring(0, functionName.length() - 1);
-				}
+				final String functionName = getFunctionName(hint.getReplacement());
 
 				if (hint.mayModify()) {
 
@@ -84,7 +79,7 @@ public abstract class AbstractHintProvider {
 					item.put(text, functionName);
 				}
 
-				item.put(displayText, getFunctionName(hint.getName()) + " - " + textOrPlaceholder(hint.shortDescription()));
+				item.put(displayText, functionName + " - " + textOrPlaceholder(hint.shortDescription()));
 				addPosition(item, hint, cursorLine, cursorPosition, cursorPosition);
 
 				if (functionName.length() > maxNameLength) {
@@ -100,8 +95,7 @@ public abstract class AbstractHintProvider {
 
 			for (final Hint hint : allHints) {
 
-				final String functionName = getFunctionName(hint.getName());
-				final String replacement  = hint.getReplacement();
+				final String functionName = getFunctionName(hint.getReplacement());
 
 				if (functionName.startsWith(currentToken)) {
 
@@ -109,21 +103,20 @@ public abstract class AbstractHintProvider {
 
 					if (hint.mayModify()) {
 
-						item.put(text, visitReplacement(replacement));
+						item.put(text, visitReplacement(functionName));
 
 					} else {
 
-						item.put(text, replacement);
+						item.put(text, functionName);
 					}
 
-					item.put(displayText, getFunctionName(hint.getName()) + " - " + textOrPlaceholder(hint.shortDescription()));
+					item.put(displayText, functionName + " - " + textOrPlaceholder(hint.shortDescription()));
 
 					addPosition(item, hint, cursorLine, cursorPosition - currentTokenLength, cursorPosition);
 
 					if (functionName.length() > maxNameLength) {
 						maxNameLength = functionName.length();
 					}
-
 
 					hints.add(item);
 				}

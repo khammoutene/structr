@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2018 Structr GmbH
+ * Copyright (C) 2010-2019 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
  *
@@ -32,11 +32,14 @@ public class GeoTransformationsModule implements StructrModule {
 
 	@Override
 	public void onLoad(final LicenseManager licenseManager) {
+	}
 
-		// extend set of builtin functions
-		Functions.put(true, LicenseManager.Community, "lat_lon_to_utm", new LatLonToUTMFunction());
-		Functions.put(true, LicenseManager.Community, "utm_to_lat_lon", new UTMToLatLonFunction());
-		Functions.put(true, LicenseManager.Community, "import_gpx",     new ImportGPXFunction());
+	@Override
+	public void registerModuleFunctions(final LicenseManager licenseManager) {
+
+		Functions.put(licenseManager, new LatLonToUTMFunction());
+		Functions.put(licenseManager, new UTMToLatLonFunction());
+		Functions.put(licenseManager, new ImportGPXFunction());
 	}
 
 	@Override
