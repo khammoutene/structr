@@ -143,36 +143,6 @@ var _Code = {
 			codeTree.on('refresh.jstree', _Code.activateLastClicked);
 			codeTree.on('copy_node.jstree', _Code.copyNode);
 
-			_Code.loadFavorites(function() {
-
-				$(codeTree).jstree({
-					plugins: ["themes", "dnd", "search", "state", "types", "wholerow"],
-					core: {
-						animation: 0,
-						state: {
-							key: 'structr-ui-code'
-						},
-						async: true,
-						data: _Code.treeInitFunction,
-						check_callback: (op, node, par, pos, more) => {
-							switch (op) {
-								case 'copy_node':
-									return _Code.allowMove(node, par, pos, more);
-								default:
-									return true;
-							}
-						},
-						animation: 0,
-						async: true,
-					},
-					dnd: {
-						large_drag_target: true,
-						large_drop_target: true,
-						always_copy: true
-					}
-				});
-			});
-			
 			_Code.loadRecentlyUsedElements(function() {
 				_TreeHelper.initTree(codeTree, _Code.treeInitFunction, 'structr-ui-code');
 			});
@@ -1963,7 +1933,6 @@ var _Code = {
 			_Code.lastClickedPath = path;
 		}
 	},
-<<<<<<< HEAD
 	addRecentlyUsedElement: function(id, name, icon, path, fromStorage) {
 		Structr.fetchHtmlTemplate('code/recently-used-button', { id: id, name: name, icon: icon }, function(html) {
 			var ctx  = $('#code-context');
