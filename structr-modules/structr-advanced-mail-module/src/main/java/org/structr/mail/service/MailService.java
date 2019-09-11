@@ -21,10 +21,14 @@ package org.structr.mail.service;
 import com.google.gson.Gson;
 import com.sun.mail.util.BASE64DecoderStream;
 import com.sun.mail.util.MailConnectException;
+
+import java.awt.*;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -68,12 +72,12 @@ public class MailService extends Thread implements RunnableService, MailServiceI
 	private boolean run                                     = false;
 	private Set<Class> supportedCommands                    = null;
 	private Set<Mailbox> processingMailboxes                = null;
-	private int maxConnectionRetries                        = 5;
+	private ConcurrentMap<String, Integer> retryCounts      = new ConcurrentHashMap<>();
 
 	public static final Setting<Integer> maxEmails          = new IntegerSetting(Settings.smtpGroup, "MailService", "mail.maxemails",          25,                  "The number of mails which are checked");
 	public static final Setting<Integer> updateInterval     = new IntegerSetting(Settings.smtpGroup, "MailService", "mail.updateinterval",     30000,               "The interval in which the mailbox is checked. Unit is milliseconds");
 	public static final Setting<String> attachmentBasePath  = new StringSetting (Settings.smtpGroup, "MailService", "mail.attachmentbasepath", "/mail/attachments", "The path in structrs virtual filesystem where attachments are downloaded to");
-
+	public static final Setting<Integer> maxRetries         = new IntegerSetting(Settings.smtpGroup, "MailService", "mail.retrycount", 5, "Amount of retries before mailbox gets temporarily disabled.");
 	//////////////////////////////////////////////////////////////// Public Methods
 
 	public MailService() {
@@ -105,44 +109,46 @@ public class MailService extends Thread implements RunnableService, MailServiceI
 
 	public Iterable<String> fetchFolders(final Mailbox mb) {
 
-		if (mb.getHost() != null && mb.getMailProtocol() != null && mb.getUser() != null && mb.getPassword() != null && mb.getFolders() != null) {
+		if (mb.getEnabled()) {
+			if (mb.getHost() != null && mb.getMailProtocol() != null && mb.getUser() != null && mb.getPassword() != null && mb.getFolders() != null) {
 
-			final Store store = connectToStore(mb);
+				final Store store = connectToStore(mb);
 
-			List<String> folders = new ArrayList<>();
+				List<String> folders = new ArrayList<>();
 
-			if (store.isConnected()) {
+				if (store.isConnected()) {
 
-				try {
-					final Folder defaultFolder = store.getDefaultFolder();
-					if (defaultFolder != null) {
+					try {
+						final Folder defaultFolder = store.getDefaultFolder();
+						if (defaultFolder != null) {
 
-						final Folder[] folderList = defaultFolder.list("*");
+							final Folder[] folderList = defaultFolder.list("*");
 
-						for (final Folder folder : folderList) {
+							for (final Folder folder : folderList) {
 
-							if ((folder.getType() & javax.mail.Folder.HOLDS_MESSAGES) != 0) {
+								if ((folder.getType() & javax.mail.Folder.HOLDS_MESSAGES) != 0) {
 
-								folders.add(folder.getFullName());
+									folders.add(folder.getFullName());
+								}
 							}
 						}
+
+					} catch (MessagingException ex) {
+
+						logger.error("Exception while trying to fetch mailbox folders.", ex);
 					}
 
-				} catch (MessagingException ex) {
-
-					logger.error("Exception while trying to fetch mailbox folders.", ex);
 				}
 
+				return folders;
+
+			} else {
+
+				logger.warn("Could not retrieve folders for mailbox[" + mb.getUuid() + "] since not all required attributes were specified.");
+				return new ArrayList<>();
 			}
-
-			return folders;
-
-		} else {
-
-			logger.warn("Could not retrieve folders for mailbox[" + mb.getUuid() + "] since not all required attributes were specified.");
-			return new ArrayList<>();
 		}
-
+		return new ArrayList<>();
 	}
 
 	@Override
@@ -480,58 +486,90 @@ public class MailService extends Thread implements RunnableService, MailServiceI
 
 		try {
 
-			if (host == null || mailProtocol == null || user == null || password == null || folders == null) {
+			if (retryCounts.get(mailbox.getUuid()) != null && retryCounts.get(mailbox.getUuid()) > maxRetries.getValue() && mailbox.getEnabled()) {
 
-				logger.warn("MailService::fetchMails: Could not retrieve mails from mailbox[" + mailbox.getUuid() + "], because not all required attributes were specified.");
+				logger.info("Mailbox[" + mailbox.getUuid() + "] has been manually set to enabled after exceeding retries. Resetting count.");
+				retryCounts.put(mailbox.getUuid(), 0);
+			}
+
+			if ((host == null || mailProtocol == null || user == null || password == null || folders == null) && mailbox.getEnabled()) {
+
+				logger.warn("MailService::fetchMails: Could not retrieve mails from mailbox[" + mailbox.getUuid() + "], because not all required attributes were specified. Temporarily disabling mailbox.");
+				App app = StructrApp.getInstance();
+				try (Tx tx = app.tx()){
+					mailbox.setEnabled(false);
+					processingMailboxes.remove(mailbox);
+					tx.success();
+				} catch (FrameworkException ex) {
+
+					logger.error("Error while disabling mailbox.", ex);
+				}
+
 				processingMailboxes.remove(mailbox);
 				return null;
-			}
+			} else if (mailbox.getEnabled()) {
 
-			final Properties properties = new Properties();
+				final Properties properties = new Properties();
 
-			properties.put("mail." + mailProtocol + ".host", host);
+				properties.put("mail." + mailProtocol + ".host", host);
 
-			switch (mailProtocol) {
+				switch (mailProtocol) {
 
-				case "pop3":
-					properties.put("mail." + mailProtocol + ".starttls.enable", "true");
-					break;
+					case "pop3":
+						properties.put("mail." + mailProtocol + ".starttls.enable", "true");
+						break;
 
-				case "imaps":
-					properties.put("mail." + mailProtocol + ".ssl.enable", "true");
-					break;
-			}
+					case "imaps":
+						properties.put("mail." + mailProtocol + ".ssl.enable", "true");
+						break;
+				}
 
-			if (port != null) {
-				properties.put("mail." + mailProtocol + ".port", port);
-			}
+				if (port != null) {
+					properties.put("mail." + mailProtocol + ".port", port);
+				}
 
 
-			final Session emailSession = Session.getDefaultInstance(properties);
-			final Store store          = emailSession.getStore(mailProtocol);
+				final Session emailSession = Session.getDefaultInstance(properties);
+				final Store store = emailSession.getStore(mailProtocol);
 
-			int retries = 0;
-			while (retries < maxConnectionRetries && !store.isConnected()) {
+				int retries = retryCounts.get(mailbox.getUuid()) != null ? retryCounts.get(mailbox.getUuid()) : 0;
 
-				try {
+				while (retries < maxRetries.getValue() && !store.isConnected()) {
 
-					store.connect(host, user, password);
+					try {
 
-				} catch (AuthenticationFailedException ex) {
+						store.connect(host, user, password);
 
-					logger.warn("Could not authenticate mailbox[" + mailbox.getUuid() + "]: " + ex.getMessage());
-					break;
-				} catch (MailConnectException ex) {
-					// silently catch connection exception
-					retries++;
-					Thread.sleep(100);
-					if (retries >= maxConnectionRetries) {
+					} catch (MailConnectException | AuthenticationFailedException ex) {
+
+						retries++;
+						if (retries > maxRetries.getValue()) {
+
+							logger.warn("Could not connect mailbox[" + mailbox.getUuid() + "]: " + ex.getMessage());
+							App app = StructrApp.getInstance();
+							try (Tx tx = app.tx()){
+								mailbox.setEnabled(false);
+								processingMailboxes.remove(mailbox);
+								tx.success();
+							} catch (FrameworkException fex) {
+
+								logger.error("Error while disabling mailbox.", fex);
+							}
+						}
+						try {
+							Thread.sleep(100);
+						} catch (InterruptedException ignored) {
+						}
+						retryCounts.put(mailbox.getUuid(), retries);
+						break;
+					} catch (Throwable ex) {
+						retryCounts.put(mailbox.getUuid(), retries);
 						throw ex;
 					}
 				}
-			}
+				return store;
 
-			return store;
+			}
 
 		} catch (AuthenticationFailedException ex) {
 			logger.warn("Authentication failed for Mailbox[" + mailbox.getUuid() + "].");
@@ -539,8 +577,6 @@ public class MailService extends Thread implements RunnableService, MailServiceI
 			logger.error("Could not connect to mailbox [" + mailbox.getUuid() + "]: " + ex.getMessage());
 		} catch (MessagingException ex) {
 			logger.error("Error while updating Mails: ", ex);
-		} catch (InterruptedException ex) {
-			logger.error("Interrupted while trying to connect to email store.", ex);
 		}
 
 		return null;

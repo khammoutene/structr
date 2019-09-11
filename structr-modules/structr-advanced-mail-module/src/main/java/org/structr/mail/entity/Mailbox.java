@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.structr.common.PropertyView;
 import org.structr.common.SecurityContext;
+import org.structr.common.error.FrameworkException;
 import org.structr.core.app.StructrApp;
 import org.structr.core.entity.Relation;
 import org.structr.core.graph.NodeInterface;
@@ -50,7 +51,10 @@ public interface Mailbox extends NodeInterface {
 		type.addEnumProperty("mailProtocol",                     PropertyView.Ui).setEnums("pop3,imaps").setIndexed(true).setRequired(true);
 		type.addIntegerProperty("port",                          PropertyView.Ui).setIndexed(true);
 		type.addFunctionProperty("availableFoldersOnServer",     PropertyView.Ui).setReadFunction("{return Structr.this.getAvailableFoldersOnServer()}").setIndexed(false);
+		type.addBooleanProperty("enabled",                       PropertyView.Ui).setDefaultValue("true");
 
+		type.addPropertyGetter("enabled",                  Boolean.class);
+		type.addPropertySetter("enabled",                  Boolean.class);
 		type.addPropertyGetter("host",                     String.class);
 		type.addPropertyGetter("user",                     String.class);
 		type.addPropertyGetter("password",                 String.class);
@@ -75,6 +79,8 @@ public interface Mailbox extends NodeInterface {
 		type.addViewProperty(PropertyView.Ui,     "id,type,name,host,user,password,mailProtocol,emails,folders,overrideMailEntityType");
 	}}
 
+	Boolean getEnabled();
+	void setEnabled(Boolean enabled) throws FrameworkException;
 	String getHost();
 	String getUser();
 	String getPassword();
