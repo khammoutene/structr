@@ -111,7 +111,6 @@ class NodeWrapper extends EntityWrapper<org.neo4j.driver.v1.types.Node> implemen
 
 		map.put("id1", id);
 		map.put("id2", db.unwrap(endNode.getId()));
-		map.put("relProperties", properties);
 
 		buf.append("MATCH (n");
 		buf.append(tenantIdentifier);
@@ -121,7 +120,9 @@ class NodeWrapper extends EntityWrapper<org.neo4j.driver.v1.types.Node> implemen
 		buf.append("MERGE (n)-[r:");
 		buf.append(relationshipType.name());
 		buf.append("]->(m)");
-		buf.append(" SET r += $relProperties RETURN r");
+		buf.append(" SET r += ");
+		buf.append(BoltDatabaseService.createParameterMapStringFromMapAndInsertIntoQueryParameters("relProperties", properties, map));
+		buf.append(" RETURN r");
 
 		final org.neo4j.driver.v1.types.Relationship rel = tx.getRelationship(buf.toString(), map);
 

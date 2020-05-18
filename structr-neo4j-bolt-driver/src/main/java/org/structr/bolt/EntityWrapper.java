@@ -169,11 +169,10 @@ abstract class EntityWrapper<T extends Entity> implements PropertyContainer, Cac
 
 			final Map<String, Object> map = new HashMap<>();
 			final SessionTransaction tx   = db.getCurrentTransaction();
-			final String query            = getQueryPrefix() + " WHERE ID(n) = $id SET n += $properties";
+			final String query            = getQueryPrefix() + " WHERE ID(n) = $id SET n += " + BoltDatabaseService.createParameterMapStringFromMapAndInsertIntoQueryParameters("properties", values, map);
 
 			// overwrite a potential "id" property
 			map.put("id", id);
-			map.put("properties", values);
 
 			// execute query
 			tx.set(query, map);

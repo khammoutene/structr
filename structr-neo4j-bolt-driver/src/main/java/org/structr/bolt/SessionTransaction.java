@@ -71,7 +71,7 @@ class SessionTransaction implements org.structr.api.Transaction {
 
 		this.transactionId = ID_SOURCE.getAndIncrement();
 		this.session       = session;
-		this.tx            = session.beginTransaction(db.getTransactionConfig(transactionId));
+		this.tx            = session.beginTransaction();
 		this.db            = db;
 	}
 
@@ -81,7 +81,7 @@ class SessionTransaction implements org.structr.api.Transaction {
 
 		this.transactionId = ID_SOURCE.getAndIncrement();
 		this.session       = session;
-		this.tx            = session.beginTransaction(config);
+		this.tx            = session.beginTransaction();
 		this.db            = db;
 	}
 

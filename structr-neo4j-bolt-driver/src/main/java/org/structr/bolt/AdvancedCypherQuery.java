@@ -285,7 +285,7 @@ public class AdvancedCypherQuery implements CypherQuery {
 
 			final String paramKey = "param" + count++;
 
-			buffer.append("ANY(x IN n.`");
+			buffer.append("SINGLE(x IN n.`");
 			buffer.append(key);
 			buffer.append("` WHERE x ");
 			buffer.append(operator);
@@ -297,7 +297,7 @@ public class AdvancedCypherQuery implements CypherQuery {
 
 		} else {
 
-			buffer.append("ANY(x IN n.`");
+			buffer.append("SINGLE(x IN n.`");
 			buffer.append(key);
 			buffer.append("` WHERE x ");
 			buffer.append(operator);

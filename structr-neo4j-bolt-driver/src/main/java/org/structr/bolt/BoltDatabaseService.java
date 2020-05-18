@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -222,10 +223,9 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 			buf.append(label);
 		}
 
-		buf.append(" $properties) RETURN n");
-
-		// make properties available to Cypher statement
-		map.put("properties", properties);
+		buf.append(" ");
+		buf.append(createParameterMapStringFromMapAndInsertIntoQueryParameters("properties", properties, map));
+		buf.append(") RETURN n");
 
 		final NodeWrapper newNode = NodeWrapper.newInstance(this, getCurrentTransaction().getNode(buf.toString(), map));
 
@@ -250,7 +250,9 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 		}
 
 		buf.append(") WHERE ID(u) = $userId");
-		buf.append(" CREATE (u)-[o:OWNS $ownsProperties]->(n");
+		buf.append(" CREATE (u)-[o:OWNS ");
+		buf.append(createParameterMapStringFromMapAndInsertIntoQueryParameters("ownsProperties", ownsProperties, parameters));
+		buf.append("]->(n");
 
 		if (tenantId != null) {
 
@@ -264,14 +266,15 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 			buf.append(label);
 		}
 
-		buf.append(" $nodeProperties)<-[s:SECURITY $securityProperties]-(u)");
+		buf.append(" ");
+		buf.append(createParameterMapStringFromMapAndInsertIntoQueryParameters("nodeProperties", nodeProperties, parameters));
+		buf.append(")<-[s:SECURITY ");
+		buf.append(createParameterMapStringFromMapAndInsertIntoQueryParameters("securityProperties", securityProperties, parameters));
+		buf.append("]-(u)");
 		buf.append(" RETURN n, s, o");
 
 		// store properties in statement
 		parameters.put("userId",             unwrap(userId));
-		parameters.put("ownsProperties",     ownsProperties);
-		parameters.put("securityProperties", securityProperties);
-		parameters.put("nodeProperties",     nodeProperties);
 
 		try {
 
@@ -301,6 +304,28 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 		}
 
 		return null;
+	}
+
+	public static String createParameterMapStringFromMapAndInsertIntoQueryParameters(final String variableName, final Map<String, Object> variableContent, final Map<String, Object> baseParamerters) {
+
+		final StringBuilder buf = new StringBuilder("{");
+
+		final ArrayList<String> tmpList = new ArrayList();
+
+		variableContent.forEach((key, value) -> {
+
+			final String paramName = variableName + "_" + key;
+
+			tmpList.add("`" + key + "`: $`" + paramName + "`");
+
+			baseParamerters.put(paramName, value);
+		});
+
+		buf.append(StringUtils.join(tmpList.toArray(), ", "));
+
+		buf.append("}");
+
+		return buf.toString();
 	}
 
 	@Override
