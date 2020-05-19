@@ -458,13 +458,13 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 				try (final Transaction tx = beginTx(timeoutSeconds)) {
 
-					for (final Map<String, Object> row : execute("CALL db.indexes() YIELD description, state, type WHERE type = 'node_label_property' RETURN {description: description, state: state}")) {
+					for (final Map<String, Object> row : execute("SHOW INDEX INFO")) {
 
-						for (final Object value : row.values()) {
+						if ("label+property".equals(row.get("index type"))) {
 
-							final Map<String, String> valueMap = (Map<String, String>)value;
+							final String description = "INDEX ON :" + row.get("label") + "(`" + row.get("property") + "`)";
 
-							existingDbIndexes.put(valueMap.get("description"), valueMap.get("state"));
+							existingDbIndexes.put(description, "UNKNOWN");
 						}
 					}
 
@@ -496,7 +496,7 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 				if ("FAILED".equals(state)) {
 
-					logger.warn("Index is in FAILED state - dropping the index before handling it further. {}. If this error is recurring, please verify that the data in the concerned property is indexable by Neo4j", indexDescription);
+					logger.warn("Index is in FAILED state - dropping the index before handling it further. {}. If this error is recurring, please verify that the data in the concerned property is indexable by the database", indexDescription);
 
 					final AtomicBoolean retry = new AtomicBoolean(true);
 					final AtomicInteger retryCount = new AtomicInteger(0);
