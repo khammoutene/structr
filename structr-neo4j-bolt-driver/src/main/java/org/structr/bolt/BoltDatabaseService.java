@@ -491,7 +491,7 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 				final String indexDescription = "INDEX ON :" + typeName + "(`" + propertyIndexConfig.getKey() + "`)";
 				final String state            = existingDbIndexes.get(indexDescription);
-				final boolean alreadySet      = Boolean.TRUE.equals("ONLINE".equals(state));
+				final boolean alreadySet      = "ONLINE".equals(state);
 				final boolean createIndex     = propertyIndexConfig.getValue();
 
 				if ("FAILED".equals(state)) {
@@ -509,11 +509,9 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 							executor.submit(() -> {
 
-								try (final Transaction tx = beginTx(timeoutSeconds)) {
+								try (Session session = driver.session()) {
 
-									execute("DROP " + indexDescription);
-
-									tx.success();
+									session.run("DROP " + indexDescription);
 
 								} catch (RetryException rex) {
 
@@ -545,7 +543,7 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 						executor.submit(() -> {
 
-							try (final Transaction tx = beginTx(timeoutSeconds)) {
+							try (Session session = driver.session()) {
 
 								if (createIndex) {
 
@@ -553,7 +551,7 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 										try {
 
-											execute("CREATE " + indexDescription);
+											session.run("CREATE " + indexDescription);
 											createdIndexes.incrementAndGet();
 
 										} catch (Throwable t) {
@@ -565,15 +563,13 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 									try {
 
-										execute("DROP " + indexDescription);
+										session.run("DROP " + indexDescription);
 										droppedIndexes.incrementAndGet();
 
 									} catch (Throwable t) {
 										logger.warn("Unable to drop {}: {}", indexDescription, t.getMessage());
 									}
 								}
-
-								tx.success();
 
 							} catch (RetryException rex) {
 
@@ -619,7 +615,7 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 				for (final Map.Entry<String, Boolean> propertyIndexConfig : entry.getValue().entrySet()) {
 
 					final String indexDescription = "INDEX ON :" + typeName + "(`" + propertyIndexConfig.getKey() + "`)";
-					final boolean indexExists     = Boolean.TRUE.equals(existingDbIndexes.get(indexDescription));
+					final boolean indexExists     = (existingDbIndexes.get(indexDescription) != null);
 					final boolean dropIndex       = propertyIndexConfig.getValue();
 
 					if (indexExists && dropIndex) {
@@ -635,13 +631,11 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 
 								executor.submit(() -> {
 
-									try (final Transaction tx = beginTx(timeoutSeconds)) {
+									try (Session session = driver.session()) {
 
 										// drop index
-										execute("DROP " + indexDescription);
+										session.run("DROP " + indexDescription);
 										droppedIndexesOfRemovedTypes.incrementAndGet();
-
-										tx.success();
 
 									} catch (RetryException rex) {
 
