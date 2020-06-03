@@ -16,16 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with Structr.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.structr.api.search;
+package org.structr.api.schema;
+
+import java.net.URI;
 
 /**
- *
  */
-public enum Occurrence {
+public interface JsonGrant extends Comparable<JsonGrant> {
 
-	REQUIRED,
-	OPTIONAL,
-	EXACT,
-	CONTAINS,
-	FORBIDDEN
+	public URI getId();
+	public JsonType getParent();
+
+	public String getPrincipalName();
+	public boolean getAllowRead();
+	public boolean getAllowWrite();
+	public boolean getAllowDelete();
+	public boolean getAllowAccessControl();
 }

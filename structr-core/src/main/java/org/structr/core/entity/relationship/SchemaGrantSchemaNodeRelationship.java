@@ -16,16 +16,35 @@
  * You should have received a copy of the GNU General Public License
  * along with Structr.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.structr.api.search;
+package org.structr.core.entity.relationship;
+
+import org.structr.core.entity.ManyToOne;
+import org.structr.core.entity.SchemaGrant;
+import org.structr.core.entity.SchemaNode;
 
 /**
  *
+ *
  */
-public enum Occurrence {
+public class SchemaGrantSchemaNodeRelationship extends ManyToOne<SchemaGrant, SchemaNode> {
 
-	REQUIRED,
-	OPTIONAL,
-	EXACT,
-	CONTAINS,
-	FORBIDDEN
+	@Override
+	public Class<SchemaGrant> getSourceType() {
+		return SchemaGrant.class;
+	}
+
+	@Override
+	public Class<SchemaNode> getTargetType() {
+		return SchemaNode.class;
+	}
+
+	@Override
+	public String name() {
+		return "SCHEMA_GRANT";
+	}
+
+	@Override
+	public boolean isInternal() {
+		return true;
+	}
 }
