@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -63,6 +63,7 @@ import org.structr.common.PathHelper;
 import org.structr.common.SecurityContext;
 import org.structr.common.ThreadLocalMatcher;
 import org.structr.common.error.FrameworkException;
+import org.structr.common.event.RuntimeEventLog;
 import org.structr.core.GraphObject;
 import org.structr.core.app.App;
 import org.structr.core.app.Query;
@@ -239,6 +240,8 @@ public class HtmlServlet extends AbstractServletBase implements HttpServiceServl
 					dontCache = true;
 
 				}
+
+				RuntimeEventLog.http(path, user);
 
 				final RenderContext renderContext = RenderContext.getInstance(securityContext, request, response);
 
@@ -949,7 +952,6 @@ public class HtmlServlet extends AbstractServletBase implements HttpServiceServl
 	 *
 	 * @param response
 	 * @param securityContext
-	 * @param renderContext
 	 * @throws IOException
 	 * @throws FrameworkException
 	 */
@@ -1015,7 +1017,6 @@ public class HtmlServlet extends AbstractServletBase implements HttpServiceServl
 	 * Find node by uuid
 	 *
 	 * @param securityContext
-	 * @param request
 	 * @param uuid
 	 * @return node
 	 * @throws FrameworkException

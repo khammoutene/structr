@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -537,5 +537,10 @@ public class SuperUser implements Principal, AccessControllable, NonIndexed {
 	@Override
 	public long getSourceTransactionId() {
 		return TransactionCommand.getCurrentTransactionId();
+	}
+
+	@Override
+	public boolean changelogEnabled() {
+		return true;
 	}
 }

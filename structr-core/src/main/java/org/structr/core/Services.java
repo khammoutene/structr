@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -50,6 +50,8 @@ import org.structr.api.service.RunnableService;
 import org.structr.api.service.Service;
 import org.structr.api.service.ServiceDependency;
 import org.structr.api.service.ServiceResult;
+import org.structr.api.service.StartServiceInMaintenanceMode;
+import org.structr.api.service.StopServiceForMaintenanceMode;
 import org.structr.api.service.StructrServices;
 import org.structr.common.Permission;
 import org.structr.common.Permissions;
@@ -274,23 +276,42 @@ public class Services implements StructrServices {
 
 			logger.warn("Maximum heap size is smaller than recommended, this can lead to problems with large databases!");
 			logger.warn("Please configure AT LEAST 8 GBs of heap memory using -Xmx8g.");
+
+			// reduce fetch size
+			Settings.FetchSize.setValue(10_000);
+
+			if (max < 1) {
+
+				// reduce fetch size even more for < 1 GB heap
+				Settings.FetchSize.setValue(1_000);
+			}
 		}
 
 		final List<Class> configuredServiceClasses = getCongfiguredServiceClasses();
 
 		logger.info("Starting services: {}", configuredServiceClasses.stream().map(Class::getSimpleName).collect(Collectors.toList()));
 
-		// initialize other services
+		final boolean maintenanceEnabled = Settings.MaintenanceModeEnabled.getValue();
+
 		for (final Class serviceClass : configuredServiceClasses) {
 
-			try {
+			final StopServiceForMaintenanceMode stopAnnotation  = (StopServiceForMaintenanceMode)serviceClass.getAnnotation(StopServiceForMaintenanceMode.class);
+			final StartServiceInMaintenanceMode startAnnotation = (StartServiceInMaintenanceMode)serviceClass.getAnnotation(StartServiceInMaintenanceMode.class);
 
-				final String activeServiceName = getNameOfActiveService(serviceClass);
+			if (maintenanceEnabled == false || (stopAnnotation == null && startAnnotation == null) || (stopAnnotation != null && startAnnotation != null)) {
 
-				startService(serviceClass, activeServiceName, false);
+				try {
 
-			} catch (FrameworkException ex) {
-				logger.warn("Service {} failed to start: {}", serviceClass.getSimpleName(), ex.getMessage());
+					final String activeServiceName = getNameOfActiveService(serviceClass);
+					startService(serviceClass, activeServiceName, false);
+
+				} catch (FrameworkException ex) {
+					logger.warn("Service {} failed to start: {}", serviceClass.getSimpleName(), ex.getMessage());
+				}
+
+			} else {
+
+				logger.warn("Service {} not started in maintenance mode", serviceClass.getSimpleName());
 			}
 		}
 
@@ -402,7 +423,6 @@ public class Services implements StructrServices {
 		return "Services is not initialized yet.";
 	}
 
-
 	public boolean isOverridingSchemaTypesAllowed() {
 		return overridingSchemaTypesAllowed;
 	}
@@ -410,7 +430,6 @@ public class Services implements StructrServices {
 	public void setOverridingSchemaTypesAllowed(final boolean allow) {
 		overridingSchemaTypesAllowed = allow;
 	}
-
 
 	public void shutdown() {
 
@@ -450,7 +469,45 @@ public class Services implements StructrServices {
 			// signal shutdown is complete
 			shutdownDone = true;
 		}
+	}
 
+	public void setMaintenanceMode(final Boolean maintenanceEnabled) {
+
+		logger.info("Setting maintenace mode = {}", maintenanceEnabled);
+
+		final List<Class> configuredServiceClasses = getCongfiguredServiceClasses();
+		final List<Class> reverseServiceClassNames = new LinkedList<>(configuredServiceClasses);
+		Collections.reverse(reverseServiceClassNames);
+
+		for (final Class serviceClass : reverseServiceClassNames) {
+
+			final StopServiceForMaintenanceMode stopAnnotation = (StopServiceForMaintenanceMode)serviceClass.getAnnotation(StopServiceForMaintenanceMode.class);
+			if (stopAnnotation != null) {
+
+				shutdownServices(serviceClass);
+			}
+		}
+
+		for (final Class serviceClass : configuredServiceClasses) {
+
+			final StopServiceForMaintenanceMode stopAnnotation = (StopServiceForMaintenanceMode)serviceClass.getAnnotation(StopServiceForMaintenanceMode.class);
+			if (stopAnnotation != null) {
+
+				final StartServiceInMaintenanceMode startAnnotation = (StartServiceInMaintenanceMode)serviceClass.getAnnotation(StartServiceInMaintenanceMode.class);
+
+				if (maintenanceEnabled == false || startAnnotation != null) {
+
+					try {
+
+						final String activeServiceName = getNameOfActiveService(serviceClass);
+						startService(serviceClass, activeServiceName, false);
+
+					} catch (FrameworkException ex) {
+						logger.warn("Service {} failed to start: {}", serviceClass.getSimpleName(), ex.getMessage());
+					}
+				}
+			}
+		}
 	}
 
 	/**

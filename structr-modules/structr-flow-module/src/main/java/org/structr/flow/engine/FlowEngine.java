@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -32,6 +32,9 @@ import org.structr.flow.impl.FlowContainer;
 import org.structr.flow.impl.FlowExceptionHandler;
 
 public class FlowEngine {
+
+	private static final Logger logger = LoggerFactory.getLogger(FlowEngine.class);
+	
 	private final Map<FlowType, FlowHandler> handlers 	= new EnumMap<>(FlowType.class);
 	private Context context                           	= null;
 
@@ -89,7 +92,7 @@ public class FlowEngine {
 
 			} else {
 
-				System.out.println("No handler registered for type " + current.getFlowType() + ", aborting.");
+				logger.warn("No handler registered for type {}, aborting.", current.getFlowType());
 
 			}
 

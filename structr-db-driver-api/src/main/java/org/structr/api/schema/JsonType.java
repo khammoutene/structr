@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -42,6 +42,15 @@ public interface JsonType extends Comparable<JsonType> {
 
 	boolean isInterface();
 	JsonType setIsInterface();
+
+	boolean isChangelogDisabled();
+	JsonType setIsChangelogDisabled();
+
+	boolean isVisibleForPublicUsers();
+	JsonType setVisibleForPublicUsers();
+
+	boolean isVisibleForAuthenticatedUsers();
+	JsonType setVisibleForAuthenticatedUsers();
 
 	JsonMethod addMethod(final String name, final String source, final String comment);
 	JsonMethod addMethod(final String name);

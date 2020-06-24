@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -31,6 +31,7 @@ import org.structr.api.search.SortOrder;
 import org.structr.api.util.ResultStream;
 import org.structr.common.SecurityContext;
 import org.structr.common.error.FrameworkException;
+import org.structr.common.event.RuntimeEventLog;
 import org.structr.core.app.App;
 import org.structr.core.app.StructrApp;
 import org.structr.core.auth.exception.AuthenticationException;
@@ -77,7 +78,11 @@ public class LoginResource extends FilterableResource {
 		final String twoFactorToken = (String) propertySet.get("twoFactorToken");
 		final String twoFactorCode  = (String) propertySet.get("twoFactorCode");
 
-		final String emailOrUsername = StringUtils.isNotEmpty(email) ? email : username;
+		String emailOrUsername = StringUtils.isNotEmpty(email) ? email : username;
+
+		if (StringUtils.contains(emailOrUsername, "@")) {
+			emailOrUsername = emailOrUsername.trim().toLowerCase();
+		}
 
 		Principal user = null;
 		RestMethodResult returnedMethodResult = null;
@@ -111,6 +116,8 @@ public class LoginResource extends FilterableResource {
 						AuthHelper.doLogin(securityContext.getRequest(), user);
 
 						logger.info("Login successful: {}", user);
+
+						RuntimeEventLog.login("Login successful", user.getUuid(), user.getName());
 
 						user.setSecurityContext(securityContext);
 

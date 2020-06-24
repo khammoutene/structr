@@ -144,6 +144,7 @@ var _Code = {
 				codeTree.on('refresh.jstree', _Code.activateLastClicked);
 
 				_Code.loadRecentlyUsedElements(function() {
+
 					_TreeHelper.initTree(codeTree, _Code.treeInitFunction, 'structr-ui-code');
 				});
 
@@ -495,7 +496,7 @@ var _Code = {
 						children: [
 							{ id: 'custom',      text: 'Custom', children: true, icon: _Icons.folder_icon },
 							{ id: 'builtin',     text: 'Built-In', children: true, icon: _Icons.folder_icon },
-							{ id: 'workingsets', text: 'Groups', children: true, icon: _Icons.folder_star_icon }
+							{ id: 'workingsets', text: 'Working Sets', children: true, icon: _Icons.folder_star_icon }
 						],
 						icon: _Icons.structr_logo_small,
 						path: '/',
@@ -684,6 +685,7 @@ var _Code = {
 						} else {
 
 							var hasVisibleChildren = _Code.hasVisibleChildren(id, entity);
+							var listItemAttributes = {};
 							var name               = treeName;
 
 							if (entity.type === 'SchemaMethod') {
@@ -699,6 +701,7 @@ var _Code = {
 								text:  name,
 								children: hasVisibleChildren,
 								icon: 'fa fa-' + icon,
+								li_attr: listItemAttributes,
 								data: {
 									type: entity.type,
 									name: entity.name
@@ -866,10 +869,9 @@ var _Code = {
 	},
 	editPropertyContent: function(entity, key, element) {
 
-		var text = entity[key] || '';
-
+		var text       = entity[key] || '';
 		var contentBox = $('.editor', element);
-		var editor = CodeMirror(contentBox.get(0), Structr.getCodeMirrorSettings({
+		var editor     = CodeMirror(contentBox.get(0), Structr.getCodeMirrorSettings({
 			value: text,
 			mode: _Code.getEditorModeForContent(text),
 			lineNumbers: true,
@@ -877,6 +879,13 @@ var _Code = {
 			indentUnit: 4,
 			tabSize: 4,
 			indentWithTabs: true,
+			lint: {
+				getAnnotations: function(text, callback) {
+					_Code.showScriptErrors(entity, text, callback);
+				},
+				async: true
+			},
+			gutters: ["CodeMirror-lint-markers"],
 			extraKeys: {
 				"Ctrl-Space": "autocomplete"
 			}
@@ -1317,138 +1326,254 @@ var _Code = {
 					});
 				}
 
+				Structr.appendInfoTextToElement({
+					element: $('#type-working-sets-heading'),
+					text: "Working Sets are identical to layouts. Removing an element from a group removes it from the layout",
+					css: { marginLeft: "5px" },
+					helpElementCss: { fontSize: "12px" }
+				});
+
 				// manage working sets
 				_WorkingSets.getWorkingSets(function(workingSets) {
 
-					workingSets.forEach(function(set) {
+					let groupSelect = document.querySelector('select#type-groups');
+
+					for (let set of workingSets) {
 
 						if (set.name !== _WorkingSets.recentlyUsedName) {
 
+							let setOption = document.createElement('option');
+							setOption.textContent = set.name;
+							setOption.dataset['groupId'] = set.id;
+
 							if (set.children.includes(result.name)) {
-
-								_Code.displayActionButton('#type-actions', _Icons.getFullSpriteClass(_Icons.delete_folder_icon), 'remove-' + set.id, 'Remove from ' + set.name, function() {
-									_WorkingSets.removeTypeFromSet(set.id, result.name, function() {
-										_TreeHelper.refreshNode('#code-tree', 'workingsets-' + set.id);
-										_Code.displaySchemaNodeContent(data);
-									});
-								});
-
-							} else {
-
-								_Code.displayActionButton('#type-actions', _Icons.getFullSpriteClass(_Icons.add_folder_icon), 'add-' + set.id, 'Add to ' + set.name, function() {
-									_WorkingSets.addTypeToSet(set.id, result.name, function() {
-										_TreeHelper.refreshNode('#code-tree', 'workingsets-' + set.id);
-										_Code.displaySchemaNodeContent(data);
-									});
-								});
+								setOption.selected = true;
 							}
+
+							groupSelect.appendChild(setOption);
 						}
+					}
+
+					let isUnselect = false;
+					$(groupSelect).select2({
+						search_contains: true,
+						width: '100%',
+						closeOnSelect: false
+					}).on('select2:unselecting', function(e, p) {
+						isUnselect = true;
+
+					}).on('select2:opening', function(e, p) {
+						if (isUnselect) {
+							e.preventDefault();
+							isUnselect = false;
+						}
+
+					}).on('select2:select', function(e, p) {
+						let id = e.params.data.element.dataset['groupId'];
+
+						_WorkingSets.addTypeToSet(id, result.name, function() {
+							_TreeHelper.refreshNode('#code-tree', 'workingsets-' + id);
+						});
+
+					}).on('select2:unselect', function(e, p) {
+						let id = e.params.data.element.dataset['groupId'];
+
+						_WorkingSets.removeTypeFromSet(id, result.name, function() {
+							_TreeHelper.refreshNode('#code-tree', 'workingsets-' + id);
+						});
 					});
 
-					_Code.displayActionButton('#type-actions', _Icons.getFullSpriteClass(_Icons.add_folder_icon), 'new', 'Create new group', function() {
+					_Code.displayActionButton('#type-actions', _Icons.getFullSpriteClass(_Icons.add_folder_icon), 'new', 'Create new Working Set', function() {
 
 						_WorkingSets.createNewSetAndAddType(result.name, function() {
 							_TreeHelper.refreshNode('#code-tree', 'workingsets');
 							_Code.displaySchemaNodeContent(data);
 						});
 					});
-
 				});
 
-				let grants = {};
+				// changelog
+				{
+					let changelogCheckbox = $('#changelog-checkbox');
+					Structr.appendInfoTextToElement({
+						element: changelogCheckbox.closest('label'),
+						text: "Only takes effect if the changelog is active",
+						css: { marginLeft: "5px", marginRight: "20px" },
+						helpElementCss: { fontSize: "12px" }
+					});
+					changelogCheckbox.prop('checked', result.changelogDisabled);
+					changelogCheckbox.on('click', function() {
+						_Code.showSchemaRecompileMessage();
+						Command.setProperties(result.id, { changelogDisabled: changelogCheckbox.prop('checked') }, function() {
+							_Code.hideSchemaRecompileMessage();
+							_Code.displaySchemaNodeContent(data);
+						});
+					});
+				}
 
-				result.schemaGrants.forEach(function(grant) {
-					grants[grant.principal.id] = grant;
-				});
+				// global visibility for public users
+				{
+					let publicCheckbox = $('#public-checkbox');
+					Structr.appendInfoTextToElement({
+						element: publicCheckbox.closest('label'),
+						text: "Makes all nodes of this type visible to public users if checked",
+						css: { marginLeft: "5px", marginRight: "20px" },
+						helpElementCss: { fontSize: "12px" }
+					});
+					publicCheckbox.prop('checked', result.defaultVisibleToPublic);
+					publicCheckbox.on('click', function() {
+						_Code.showSchemaRecompileMessage();
+						Command.setProperties(result.id, { defaultVisibleToPublic: publicCheckbox.prop('checked') }, function() {
+							_Code.hideSchemaRecompileMessage();
+							_Code.displaySchemaNodeContent(data);
+						});
+					});
+				}
 
-				Command.query('Group', 1000, 1, 'name', 'asc', { }, function(groupResult) {
+				// global visibility for authenticated users
+				{
+					let authenticatedCheckbox = $('#authenticated-checkbox');
+					Structr.appendInfoTextToElement({
+						element: authenticatedCheckbox.closest('label'),
+						text: "Makes all nodes of this type visible to authenticated users if checked",
+						css: { marginLeft: "5px", marginRight: "20px" },
+						helpElementCss: { fontSize: "12px" }
+					});
+					authenticatedCheckbox.prop('checked', result.defaultVisibleToAuth);
+					authenticatedCheckbox.on('click', function() {
+						_Code.showSchemaRecompileMessage();
+						Command.setProperties(result.id, { defaultVisibleToAuth: authenticatedCheckbox.prop('checked') }, function() {
+							_Code.hideSchemaRecompileMessage();
+							_Code.displaySchemaNodeContent(data);
+						});
+					});
+				}
 
-					let grantsContainer = document.querySelector('#schema-grants');
+				let schemaGrantsTableConfig = {
+					class: 'schema-grants-table schema-props',
+					cols: [
+						{ class: '', title: 'Name' },
+						{ class: '', title: 'read' },
+						{ class: '', title: 'write' },
+						{ class: '', title: 'delete' },
+						{ class: '', title: 'access control' }
+					]
+				};
 
-					grantsContainer.innerHTML = '<tr><th>Name</th><th>read</th><th>write</th><th>delete</th><th>access control</th></tr>';
+				Structr.fetchHtmlTemplate('code/schema-grants-table', schemaGrantsTableConfig, function(html) {
 
-					groupResult.forEach(function(group) {
+					let schemaGrantsContainer = document.querySelector('#schema-grants');
+					schemaGrantsContainer.innerHTML = html;
 
-						let row  = document.createElement('tr');
-						let name = document.createElement('td');
-						let r    = document.createElement('td');
-						let w    = document.createElement('td');
-						let d    = document.createElement('td');
-						let a    = document.createElement('td');
+					let tbody = schemaGrantsContainer.querySelector('tbody');
+					let tfoot = schemaGrantsContainer.querySelector('tfoot');
 
-						row.appendChild(name);
-						row.appendChild(r);
-						row.appendChild(w);
-						row.appendChild(d);
-						row.appendChild(a);
-
-						let readBox          = document.createElement('input');
-						let writeBox         = document.createElement('input');
-						let deleteBox        = document.createElement('input');
-						let accessControlBox = document.createElement('input');
-
-						name.innerHTML        = group.name;
-						readBox.type          = 'checkbox';
-						writeBox.type         = 'checkbox';
-						deleteBox.type        = 'checkbox';
-						accessControlBox.type = 'checkbox';
-
-						r.appendChild(readBox);
-						w.appendChild(writeBox);
-						d.appendChild(deleteBox);
-						a.appendChild(accessControlBox);
-
-						grantsContainer.appendChild(row);
-
-						let grant = grants[group.id];
-						if (grant) {
-
-							readBox.checked          = grant.allowRead;
-							writeBox.checked         = grant.allowWrite;
-							deleteBox.checked        = grant.allowDelete;
-							accessControlBox.checked = grant.allowAccessControl;
-
-							let update = function(id, d) {
-								_Code.showSchemaRecompileMessage();
-								Command.setProperties(id, d, function() {
-									_Code.hideSchemaRecompileMessage();
-									_Code.displaySchemaNodeContent(data);
-								});
-							};
-
-							readBox.addEventListener('click', function() { update(grant.id, { allowRead: readBox.checked}); });
-							writeBox.addEventListener('click', function() { update(grant.id, { allowWrite: writeBox.checked }); });
-							deleteBox.addEventListener('click', function() { update(grant.id, { allowDelete: deleteBox.checked }); });
-							accessControlBox.addEventListener('click', function() { update(grant.id, { allowAccessControl: accessControlBox.checked }); });
-
+					let schemaGrantsTableChange = function (cb, rowConfig) {
+						if (rowConfig[cb.name] !== cb.checked) {
+							cb.classList.add('changed');
 						} else {
-
-							let create = function() {
-
-								_Code.showSchemaRecompileMessage();
-								Command.create({
-									type:               'SchemaGrant',
-									principal:          group.id,
-									schemaNode:         result.id,
-									allowRead:          readBox.checked,
-									allowWrite:         writeBox.checked,
-									allowDelete:        deleteBox.checked,
-									allowAccessControl: accessControlBox.checked,
-								}, function() {
-									_Code.hideSchemaRecompileMessage();
-									_Code.displaySchemaNodeContent(data);
-								});
-							};
-
-							readBox.addEventListener('click', create);
-							writeBox.addEventListener('click', create);
-							deleteBox.addEventListener('click', create);
-							accessControlBox.addEventListener('click', create);
+							cb.classList.remove('changed');
 						}
+
+						if (schemaGrantsContainer.querySelector('.changed')) {
+							tfoot.classList.remove('hidden');
+						} else {
+							tfoot.classList.add('hidden');
+						}
+					};
+
+					schemaGrantsContainer.querySelector('.discard-all').addEventListener('click', function (e) {
+
+						for (let changedCb of tbody.querySelectorAll('.changed')) {
+
+							changedCb.checked = !changedCb.checked;
+							changedCb.classList.remove('changed');
+						}
+
+						tfoot.classList.add('hidden');
 					});
 
-				});
+					schemaGrantsContainer.querySelector('.save-all').addEventListener('click', function (e) {
 
+						let grantData = [];
+
+						for (let row of tbody.querySelectorAll('tr')) {
+
+							if (row.querySelector('.changed')) {
+
+								let rowConfig = {
+									principal:          row.dataset['groupId'],
+									schemaNode:         result.id,
+									allowRead:          row.querySelector('input[name=allowRead]').checked,
+									allowWrite:         row.querySelector('input[name=allowWrite]').checked,
+									allowDelete:        row.querySelector('input[name=allowDelete]').checked,
+									allowAccessControl: row.querySelector('input[name=allowAccessControl]').checked
+								};
+
+								let grantId = row.dataset['grantId'];
+								if (grantId) {
+									rowConfig.id = grantId;
+								}
+
+								grantData.push(rowConfig);
+							}
+						}
+
+						_Code.showSchemaRecompileMessage();
+
+						fetch(rootUrl + 'SchemaGrant', {
+							dataType: 'json',
+							contentType: 'application/json; charset=utf-8',
+							method: 'PATCH',
+							body: JSON.stringify(grantData)
+						}).then((response) => {
+
+							if (response.ok) {
+
+								_Code.hideSchemaRecompileMessage();
+								_Code.displaySchemaNodeContent(data);
+							}
+						});
+					});
+
+					let grants = {};
+
+					result.schemaGrants.forEach(function(grant) {
+						grants[grant.principal.id] = grant;
+					});
+
+					Command.query('Group', 1000, 1, 'name', 'asc', { }, function(groupResult) {
+
+						for (let group of groupResult) {
+
+							let tplConfig = {
+								groupId: group.id,
+								name: group.name,
+								grantId            : (!grants[group.id]) ? '' : grants[group.id].id,
+								allowRead          : (!grants[group.id]) ? false : grants[group.id].allowRead,
+								allowWrite         : (!grants[group.id]) ? false : grants[group.id].allowWrite,
+								allowDelete        : (!grants[group.id]) ? false : grants[group.id].allowDelete,
+								allowAccessControl : (!grants[group.id]) ? false : grants[group.id].allowAccessControl
+							};
+
+							Structr.fetchHtmlTemplate('code/schema-grants-row', tplConfig, function(html) {
+
+								let dummyTbody = document.createElement('tbody');
+								dummyTbody.innerHTML = html;
+								let row = dummyTbody.firstChild;
+
+								tbody.appendChild(row);
+
+								for (let cb of row.querySelectorAll('input')) {
+
+									cb.addEventListener('change', function (e) {
+										schemaGrantsTableChange(cb, tplConfig);
+									});
+								}
+							});
+						}
+					});
+				});
 			});
 		}, 'schema');
 	},
@@ -1548,6 +1673,8 @@ var _Code = {
 		let sourceContainer = document.getElementById('generated-source-code');
 		if (sourceContainer) {
 
+			fastRemoveAllChildren(sourceContainer);
+
 			let typeId = sourceContainer.dataset.typeId;
 
 			if (typeId) {
@@ -1558,9 +1685,8 @@ var _Code = {
 					statusCode: {
 						200: function(result) {
 
-							var container = $(sourceContainer);
-
-							var editor    = CodeMirror(container[0], Structr.getCodeMirrorSettings({
+							let container = $(sourceContainer);
+							let editor    = CodeMirror(container[0], Structr.getCodeMirrorSettings({
 								value: result.result,
 								mode: 'text/x-java',
 								lineNumbers: true,
@@ -2614,6 +2740,90 @@ var _Code = {
 				});
 			}
 		});
+	},
+	showScriptErrors: function(entity, text, callback) {
+
+		let schemaType = entity && entity.schemaNode ? entity.schemaNode.name : '';
+		let methodName = entity.name;
+
+		$.ajax({
+			url: '/structr/rest/_runtimeEventLog?type=Javascript&seen=false&pageSize=100',
+			method: 'get',
+			statusCode: {
+				200: function(eventLog) {
+
+					let events = [];
+
+					for (var runtimeEvent of eventLog.result) {
+
+						if (runtimeEvent.data && runtimeEvent.data.length >= 5) {
+
+							let message = runtimeEvent.data[0];
+							let line    = runtimeEvent.data[1];
+							let column  = runtimeEvent.data[2];
+							let type    = runtimeEvent.data[3];
+							let name    = runtimeEvent.data[4];
+
+							if (type === schemaType && name === methodName) {
+
+								let fromLine = line-1;
+								let toLine   = line-1;
+								let fromCol  = column-2;
+								let toCol    = column-1;
+
+								// column == 0 => error column unknown
+								if (column === 0) {
+
+									toLine  = line;
+									fromCol = 0;
+									toCol   = 0;
+								}
+
+								events.push({
+
+									from: CodeMirror.Pos(fromLine, fromCol),
+									to: CodeMirror.Pos(toLine, toCol),
+									message: 'Scripting error: ' + message,
+									severity : 'warning'
+								});
+							}
+						}
+					}
+
+					if (events.length > 0) {
+
+						// must be delayed because the button is not always loaded when this code runs.. :(
+						window.setTimeout(function() {
+
+							let button = $('#dismiss-warnings-button');
+							button.removeClass('hidden');
+							button.off('click').on('click', function() {
+								var editor = $('.CodeMirror')[0].CodeMirror;
+								if (editor) {
+
+									// mark events as seen
+									$.ajax({
+										url: '/structr/rest/_runtimeEventLog?type=Javascript',
+										method: 'post',
+										data: JSON.stringify({
+											action: 'acknowledge'
+										}),
+										statusCode: {
+											200: function() {
+												button.addClass('hidden');
+												editor.performLint();
+											}
+										}
+									});
+								}
+							});
+						}, 200);
+					}
+
+					callback(events);
+				}
+			}
+		});
 	}
 };
 
@@ -2760,7 +2970,7 @@ var _WorkingSets = {
 
 			Command.create({
 				type: 'ApplicationConfigurationDataNode',
-				name: setName || 'New Group',
+				name: setName || 'New Working Set',
 				content: JSON.stringify(config),
 				configType: 'layout'
 			}, callback);

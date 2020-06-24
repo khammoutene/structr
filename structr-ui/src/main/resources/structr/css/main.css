@@ -1561,6 +1561,11 @@ button.action.disabled:hover {
 	background-size: 20px 20px;
 }
 
+.actions.schema-props .fake-tr.editing.to-delete {
+	background-image: linear-gradient(135deg, #a5e25a 25%, #b3b3b3 25%, #b3b3b3 50%, #a5e25a 50%, #a5e25a 75%, #b3b3b3 75%, #b3b3b3 100%);
+	background-size: 20px 20px;
+}
+
 .schema-props .to-delete td:not(.actions-col),
 .schema-props .to-delete .fake-td:not(.actions-col) {
 	opacity: 0.5;
@@ -1992,8 +1997,18 @@ button.disabled, i.disabled {
 	cursor: not-allowed;
 }
 
-.input-and-button, .select-and-button {
+.input-and-button, .select-and-button, .button-and-input {
 	display: inline-block;
+}
+
+.button-and-input button.btn {
+	margin-right: 0;
+	border-right: 0;
+	margin-left: 4px;
+}
+
+.button-and-input input[type="text"] {
+	height: 14px;
 }
 
 .input-and-button input[type=text] {
@@ -3862,7 +3877,7 @@ input.tree-search-input:focus {
 
 /* BEGIN: schema grants editor */
 table#schema-grants {
-	width: 600px;
+	width: 100%;
 	margin-top: 16px;
 }
 
@@ -3881,8 +3896,27 @@ table#schema-grants th:first-child, table#schema-grants td:first-child {
 table#schema-grants th, table#schema-grants td {
 	text-align: center;
 }
-
 /* END: schema grants editor */
+
+/* BEGIN: runtime event log */
+#event-log-options {
+	margin-bottom: 4px;
+}
+
+#event-log-options label {
+}
+
+#event-type-filter {
+	margin-right: 16px;
+}
+
+#event-type-page-size {
+	margin-right: 32px;
+}
+
+#refresh-event-log {
+}
+/* END: runtime event log */
 
 /* BEGIN: Fake table styles for schema methods editor */
 .fake-tbody .fake-tr {

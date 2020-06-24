@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -418,10 +418,6 @@ public class LogResource extends Resource {
 
 		for (final LogEvent event : result) {
 
-			if ((++count % 100000) == 0) {
-				System.out.println(count);
-			}
-
 			final String pathSubjectId = state.inverse() ? event.getObjectId() : event.getSubjectId();
 			final String pathObjectId  = state.inverse() ? event.getSubjectId() : event.getObjectId();
 			final long timestamp       = event.getTimestamp();
@@ -508,7 +504,7 @@ public class LogResource extends Resource {
 
 		} else {
 
-			System.out.println("Skipping entry " + fileName);
+			logger.warn("Skipping entry {}", fileName);
 		}
 
 		return count;

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -323,7 +323,7 @@ public abstract class StructrOAuthClient {
 			this.userInfo = JSONUtils.parseJSON(body);
 
 			// return desired value
-			return (String)this.userInfo.get(key);
+			return (String) this.userInfo.get(key);
 
 		} catch (Exception ex) {
 

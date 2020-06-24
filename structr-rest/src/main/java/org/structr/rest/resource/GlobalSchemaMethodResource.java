@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -103,8 +103,8 @@ public class GlobalSchemaMethodResource extends Resource {
 		return false;
 	}
 
-        @Override
-        public String getResourceSignature() {
-                return SchemaHelper.normalizeEntityName(getUriPart());
-        }
+	@Override
+	public String getResourceSignature() {
+		return SchemaHelper.normalizeEntityName(getUriPart());
+	}
 }

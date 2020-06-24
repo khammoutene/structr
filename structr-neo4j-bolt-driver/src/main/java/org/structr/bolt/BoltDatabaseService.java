@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -859,6 +859,14 @@ public class BoltDatabaseService extends AbstractDatabaseService implements Grap
 	@Override
 	public String getErrorMessage() {
 		return errorMessage;
+	}
+
+	@Override
+	public Map<String, Map<String, Integer>> getCachesInfo() {
+		return Map.of(
+			"nodes", NodeWrapper.nodeCache.getCacheInfo(),
+			"relationships", RelationshipWrapper.relationshipCache.getCacheInfo()
+		);
 	}
 
 	// ----- private methods -----

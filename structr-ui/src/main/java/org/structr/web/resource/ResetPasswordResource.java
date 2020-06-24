@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -94,11 +94,14 @@ public class ResetPasswordResource extends Resource {
 
 		if (propertySet.containsKey("eMail")) {
 
-			final String emailString  = (String) propertySet.get("eMail");
+			String emailString  = (String) propertySet.get("eMail");
 
 			if (StringUtils.isEmpty(emailString)) {
 				return new RestMethodResult(HttpServletResponse.SC_BAD_REQUEST);
 			}
+
+			// cleanup user input
+			emailString = emailString.trim().toLowerCase();
 
 			final ConfigurationProvider config        = StructrApp.getConfiguration();
 			final PropertyKey<String> confirmationKey = StructrApp.key(User.class, "confirmationKey");

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -25,25 +25,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.hamcrest.Matchers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.structr.api.config.Settings;
 import org.structr.api.schema.JsonSchema;
 import org.structr.common.AccessControllable;
 import org.structr.common.Permission;
 import org.structr.common.error.FrameworkException;
+import org.structr.core.GraphObject;
 import org.structr.core.app.StructrApp;
 import org.structr.core.entity.AbstractNode;
+import org.structr.core.entity.AbstractSchemaNode;
 import org.structr.core.entity.Group;
 import org.structr.core.entity.Principal;
 import org.structr.core.entity.SchemaGrant;
 import org.structr.core.entity.SchemaNode;
 import org.structr.core.entity.Security;
+import org.structr.core.function.Functions;
 import org.structr.core.graph.NodeAttribute;
 import org.structr.core.graph.NodeInterface;
 import org.structr.core.graph.Tx;
 import org.structr.core.property.StringProperty;
+import org.structr.schema.action.ActionContext;
 import org.structr.schema.export.StructrSchema;
 import org.structr.web.auth.UiAuthenticator;
 import org.structr.web.common.FileHelper;
@@ -63,8 +67,6 @@ import static org.testng.AssertJUnit.fail;
 import org.testng.annotations.Test;
 
 public class Deployment4Test extends DeploymentTestBase {
-
-	private static final Logger logger = LoggerFactory.getLogger(Deployment4Test.class.getName());
 
 	@Test
 	public void test41CustomAttributes() {
@@ -665,6 +667,165 @@ public class Deployment4Test extends DeploymentTestBase {
 
 			.when()
 				.get("/Project");
+	}
+
+	@Test
+	public void test49ChangelogDisabled() {
+
+		Settings.ChangelogEnabled.setValue(true);
+
+		// setup 1 - schema type
+		try (final Tx tx = app.tx()) {
+
+			final JsonSchema schema = StructrSchema.createFromDatabase(app);
+
+			// add test type
+			schema.addType("Project").setIsChangelogDisabled();
+
+			StructrSchema.extendDatabaseSchema(app, schema);
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		// test roundtrip
+		compare(calculateHash(), true);
+
+		// verify that the changelog flag is still disabled
+		try (final Tx tx = app.tx()) {
+
+			final SchemaNode node = app.nodeQuery(SchemaNode.class).andName("Project").getFirst();
+
+			assertTrue("Changelog disabled flag should be set after deployment roundtrip", node.getProperty(AbstractSchemaNode.changelogDisabled));
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		final Class type = StructrApp.getConfiguration().getNodeEntityClass("Project");
+
+		// verify that the changelog flag is still disabled
+		try (final Tx tx = app.tx()) {
+
+			final NodeInterface node = app.create(type, "test");
+
+			node.setProperty(AbstractNode.name, "modified");
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		// verify that no changelog file was written!
+		try (final Tx tx = app.tx()) {
+
+			final GraphObject node = app.nodeQuery(type).getFirst();
+			final List changelog   = (List)Functions.get("changelog").apply(new ActionContext(securityContext), null, new Object[] { node });
+
+			assertEquals("Changelog was created despite being disabled for the test type", 0, changelog.size());
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+	}
+
+	@Test
+	public void test50SchemaBasedVisibilityFlags() {
+
+		// setup
+		try (final Tx tx = app.tx()) {
+
+			app.create(User.class,
+				new NodeAttribute<>(StructrApp.key(Principal.class,     "name"), "admin"),
+				new NodeAttribute<>(StructrApp.key(Principal.class, "password"), "admin"),
+				new NodeAttribute<>(StructrApp.key(Principal.class,  "isAdmin"),    true)
+			);
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		// setup 1 - schema type
+		try (final Tx tx = app.tx()) {
+
+			final JsonSchema schema = StructrSchema.createFromDatabase(app);
+
+			// add test type
+			schema.addType("Public").setVisibleForPublicUsers();
+			schema.addType("Authenticated").setVisibleForAuthenticatedUsers();
+			schema.addType("Both").setVisibleForAuthenticatedUsers().setVisibleForPublicUsers();
+
+			StructrSchema.extendDatabaseSchema(app, schema);
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		final Class anonClass = StructrApp.getConfiguration().getNodeEntityClass("Public");
+		final Class authClass = StructrApp.getConfiguration().getNodeEntityClass("Authenticated");
+		final Class bothClass = StructrApp.getConfiguration().getNodeEntityClass("Both");
+
+		// setup 2 - schema grant
+		try (final Tx tx = app.tx()) {
+
+			app.create(anonClass, "anon1");
+			app.create(anonClass, "anon2");
+
+			app.create(authClass, "auth1");
+			app.create(authClass, "auth2");
+
+			app.create(bothClass, "both1");
+			app.create(bothClass, "both2");
+
+			app.create(User.class,
+				new NodeAttribute<>(AbstractNode.name, "user"),
+				new NodeAttribute<>(StructrApp.key(User.class, "password"), "password")
+			);
+
+			// allow REST access
+			grant("Public",        UiAuthenticator.NON_AUTH_USER_GET | UiAuthenticator.AUTH_USER_GET,  true); // reset all other grants
+			grant("Authenticated", UiAuthenticator.NON_AUTH_USER_GET | UiAuthenticator.AUTH_USER_GET, false);
+			grant("Both",          UiAuthenticator.NON_AUTH_USER_GET | UiAuthenticator.AUTH_USER_GET, false);
+
+			tx.success();
+
+		} catch (FrameworkException fex) {
+			fail("Unexpected exception.");
+		}
+
+		// test before roundtrip
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Public");
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(0)).when().get("/Authenticated");
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Both");
+
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Public");
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Authenticated");
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Both");
+
+
+		// test
+		compare(calculateHash(), true);
+
+		// test after roundtrip
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Public");
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(0)).when().get("/Authenticated");
+		RestAssured.given().expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Both");
+
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Public");
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Authenticated");
+		RestAssured.given().header("X-User", "user").header("X-Password", "password").expect().statusCode(200).body("result", Matchers.hasSize(2)).when().get("/Both");
 	}
 
 	// ----- private methods -----

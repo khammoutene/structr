@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2010-2020 Structr GmbH
  *
  * This file is part of Structr <http://structr.org>.
@@ -29,7 +29,9 @@ import org.apache.commons.collections4.map.LRUMap;
 import org.apache.commons.lang3.StringUtils;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
+import org.mozilla.javascript.EcmaError;
 import org.mozilla.javascript.NativeObject;
+import org.mozilla.javascript.RhinoException;
 import org.mozilla.javascript.Script;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.Undefined;
@@ -46,6 +48,7 @@ import org.structr.api.util.Iterables;
 import org.structr.common.SecurityContext;
 import org.structr.common.error.FrameworkException;
 import org.structr.common.error.UnlicensedScriptException;
+import org.structr.common.event.RuntimeEventLog;
 import org.structr.core.GraphObject;
 import org.structr.core.GraphObjectMap;
 import org.structr.core.entity.AbstractNode;
@@ -260,7 +263,7 @@ public class Scripting {
 			if (compiledScript == null) {
 
 				final String sourceLocation     = entityType + snippet.getName() + " [" + entityDescription + "]";
-				final String embeddedSourceCode = embedInFunction(actionContext, snippet.getSource());
+				final String embeddedSourceCode = embedInFunction(snippet);
 
 				compiledScript = compileOrGetCached(scriptingContext, embeddedSourceCode, sourceLocation, 1);
 			}
@@ -319,6 +322,33 @@ public class Scripting {
 
 			throw new FrameworkException(422, message);
 
+		} catch (final EcmaError ecmaError) {
+
+			final String type      = entity != null ? entity.getClass().getSimpleName() : "";
+			final String errorName = ecmaError.getName();
+			final String message   = ecmaError.getErrorMessage();
+			final int lineNumber   = ecmaError.lineNumber();
+			final int columnNumber = ecmaError.columnNumber();
+
+			RuntimeEventLog.javascript(errorName, message, lineNumber, columnNumber, type, snippet.getName(), entityDescription);
+
+			// if any other kind of Throwable is encountered throw a new FrameworkException and be done with it
+			throw new FrameworkException(422, ecmaError.getMessage());
+
+		} catch (final RhinoException rhinoException) {
+
+			final String type      = entity != null ? entity.getClass().getSimpleName() : "";
+			final String errorName = "RhinoException";
+			final String message   = rhinoException.details();
+			final int lineNumber   = rhinoException.lineNumber();
+			final int columnNumber = rhinoException.columnNumber();
+
+			RuntimeEventLog.javascript(errorName, message, lineNumber, columnNumber, type, snippet.getName(), entityDescription);
+
+			// if any other kind of Throwable is encountered throw a new FrameworkException and be done with it
+			throw new FrameworkException(422, rhinoException.getMessage());
+
+
 		} catch (final Throwable t) {
 
 			if (!actionContext.getDisableVerboseExceptionLogging()) {
@@ -366,9 +396,8 @@ public class Scripting {
 		ScriptEngine engine = manager.getEngineByName(engineName);
 
 		if (engine == null) {
-			List<ScriptEngineFactory> factories = manager.getEngineFactories();
 
-			for (ScriptEngineFactory factory : factories) {
+			for (ScriptEngineFactory factory : manager.getEngineFactories()) {
 
 				if (factory.getNames().contains(engineName)) {
 
@@ -497,16 +526,21 @@ public class Scripting {
 		Context.exit();
 	}
 
-	private static String embedInFunction(final ActionContext actionContext, final String source) {
+	private static String embedInFunction(final Snippet snippet) {
 
-		final StringBuilder buf = new StringBuilder();
+		if (snippet.embed()) {
 
-		buf.append("function main() { ");
-		buf.append(source);
-		buf.append("\n}\n");
-		buf.append("\n\nvar _structrMainResult = main();");
+			final StringBuilder buf = new StringBuilder();
 
-		return buf.toString();
+			buf.append("function main() { ");
+			buf.append(snippet.getSource());
+			buf.append("\n}\n");
+			buf.append("\n\nvar _structrMainResult = main();");
+
+			return buf.toString();
+		}
+
+		return snippet.getSource();
 	}
 
 	public static Script compileOrGetCached(final Context context, final String source, final String sourceName, final int lineNo) {
